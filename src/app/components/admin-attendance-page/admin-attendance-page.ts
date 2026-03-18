@@ -6,6 +6,8 @@ import { trigger, transition, style, animate } from '@angular/animations';
 import { DataService, Course } from '../../services/data.service';
 import { ApiService } from '../../services/api.service';
 
+const CAMPUS_FALLBACK_LOCATION = { lat: 23.0258, lng: 72.5873 };
+
 export interface StudentAttendance {
   studentId: string;
   studentName: string;
@@ -343,28 +345,28 @@ export class AdminAttendancePage implements OnInit {
         (error) => {
           if (!resolved) {
             resolved = true;
-            console.warn('Geolocation failed or blocked, using fallback.', error);
-            setTimeout(() => handleSuccess(40.7128, -74.0060), 500);
+            console.warn('Geolocation failed or blocked, using campus fallback.', error);
+            setTimeout(() => handleSuccess(CAMPUS_FALLBACK_LOCATION.lat, CAMPUS_FALLBACK_LOCATION.lng), 500);
             this.cdr.detectChanges();
           }
         },
-        { enableHighAccuracy: false, timeout: 2000 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
       );
 
       // Force fallback if hangs completely without erroring
       setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          console.warn('Geolocation hung, using fallback.');
-          handleSuccess(40.7128, -74.0060);
+          console.warn('Geolocation hung, using campus fallback.');
+          handleSuccess(CAMPUS_FALLBACK_LOCATION.lat, CAMPUS_FALLBACK_LOCATION.lng);
           this.cdr.detectChanges();
         }
-      }, 2500);
+      }, 13000);
 
     } else {
       setTimeout(() => {
         resolved = true;
-        handleSuccess(40.7128, -74.0060);
+        handleSuccess(CAMPUS_FALLBACK_LOCATION.lat, CAMPUS_FALLBACK_LOCATION.lng);
       }, 500);
       this.cdr.detectChanges();
     }

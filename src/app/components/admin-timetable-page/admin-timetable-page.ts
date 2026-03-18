@@ -6,6 +6,8 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
 import { DataService, Course } from '../../services/data.service';
 import { ApiService } from '../../services/api.service';
 
+const CAMPUS_FALLBACK_LOCATION = { lat: 23.0258, lng: 72.5873 };
+
 export interface AdminScheduleItem {
   id: string;
   courseId: string;
@@ -807,26 +809,26 @@ export class AdminTimetablePage implements OnInit {
         (error) => {
           if (!resolved) {
             resolved = true;
-            console.warn('Geolocation failed, using fallback.', error);
-            setTimeout(() => handleSuccess(40.7128, -74.0060), 500);
+            console.warn('Geolocation failed, using campus fallback.', error);
+            setTimeout(() => handleSuccess(CAMPUS_FALLBACK_LOCATION.lat, CAMPUS_FALLBACK_LOCATION.lng), 500);
             this.cdr.detectChanges();
           }
         },
-        { enableHighAccuracy: false, timeout: 2000 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
       );
 
       setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          console.warn('Geolocation hung, using fallback.');
-          handleSuccess(40.7128, -74.0060);
+          console.warn('Geolocation hung, using campus fallback.');
+          handleSuccess(CAMPUS_FALLBACK_LOCATION.lat, CAMPUS_FALLBACK_LOCATION.lng);
           this.cdr.detectChanges();
         }
-      }, 2500);
+      }, 13000);
     } else {
       setTimeout(() => {
         resolved = true;
-        handleSuccess(40.7128, -74.0060);
+        handleSuccess(CAMPUS_FALLBACK_LOCATION.lat, CAMPUS_FALLBACK_LOCATION.lng);
       }, 500);
       this.cdr.detectChanges();
     }

@@ -74,6 +74,7 @@ export class AttendancePageComponent implements OnInit {
     scanStatus: 'idle' | 'scanning' | 'success' | 'error' | 'location-denied' = 'idle';
     errorMessage = '';
     userLocation: { lat: number, lng: number } | null = null;
+    private readonly pendingScanStorageKey = 'pending_scan_lecture_id';
 
     // Computed Stats
     stats = {
@@ -96,6 +97,12 @@ export class AttendancePageComponent implements OnInit {
 
         if (this.initialScanId) {
             this.scanStatus = 'idle';
+            const scanFromUrl = typeof window !== 'undefined'
+                ? new URLSearchParams(window.location.search).get('scan')
+                : null;
+            if (scanFromUrl) {
+                setTimeout(() => this.handleStartScan(), 300);
+            }
         }
     }
 
@@ -150,14 +157,15 @@ export class AttendancePageComponent implements OnInit {
         this.isScannerOpen = true;
         this.errorMessage = '';
 
-        const activeSession = this.dataService.activeQrSession();
-        const lectureId = activeSession?.lectureId || this.initialScanId;
+        const lectureId = this.resolveLectureId();
 
         if (!lectureId) {
             this.scanStatus = 'error';
             this.errorMessage = "Please use your phone's native camera to scan the QR code shown by your instructor first.";
             return;
         }
+
+        sessionStorage.setItem(this.pendingScanStorageKey, lectureId);
 
         this.scanStatus = 'scanning';
 
@@ -188,7 +196,7 @@ export class AttendancePageComponent implements OnInit {
         if (!this.userLocation) return;
 
         const activeSession = this.dataService.activeQrSession();
-        const lectureId = activeSession?.lectureId || this.initialScanId;
+        const lectureId = this.resolveLectureId();
 
         // Checked in handleStartScan
 
@@ -209,6 +217,7 @@ export class AttendancePageComponent implements OnInit {
                     this.calculateSubjectSummaries();
                     this.isScannerOpen = false;
                     this.scanStatus = 'idle';
+                    sessionStorage.removeItem(this.pendingScanStorageKey);
                 }, 1200);
             },
             error: (err) => {
@@ -216,6 +225,31 @@ export class AttendancePageComponent implements OnInit {
                 this.errorMessage = err?.error?.message || 'Unable to mark attendance right now.';
             }
         });
+    }
+
+    private resolveLectureId(): string | null {
+        const activeSession = this.dataService.activeQrSession();
+        if (activeSession?.lectureId) {
+            return activeSession.lectureId;
+        }
+
+        if (this.initialScanId) {
+            return this.initialScanId;
+        }
+
+        const persistedScanId = sessionStorage.getItem(this.pendingScanStorageKey);
+        if (persistedScanId) {
+            return persistedScanId;
+        }
+
+        if (typeof window !== 'undefined') {
+            const scanFromUrl = new URLSearchParams(window.location.search).get('scan');
+            if (scanFromUrl) {
+                return scanFromUrl;
+            }
+        }
+
+        return null;
     }
 
     calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {

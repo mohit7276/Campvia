@@ -130,6 +130,7 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     scanStatus: 'idle' | 'scanning' | 'success' | 'error' | 'location-denied' = 'idle';
     errorMessage = '';
     userLocation: { lat: number, lng: number } | null = null;
+    private readonly pendingScanStorageKey = 'pending_scan_lecture_id';
 
     ngOnInit() {
         this.updateDateWindow();
@@ -139,8 +140,13 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
         this.loadTodaySchedule();
 
         if (this.initialScanId) {
-            // Wait for user to tap to prevent browser autoplay/geolocation blocking
             this.scanStatus = 'idle';
+            const scanFromUrl = typeof window !== 'undefined'
+                ? new URLSearchParams(window.location.search).get('scan')
+                : null;
+            if (scanFromUrl) {
+                setTimeout(() => this.handleStartScan(), 300);
+            }
         }
     }
 
@@ -333,8 +339,7 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
         this.isScannerOpen = true;
         this.errorMessage = '';
 
-        const activeSession = this.dataService.activeQrSession();
-        const lectureId = activeSession?.lectureId || this.initialScanId;
+        const lectureId = this.resolveLectureId();
 
         if (!lectureId) {
             this.scanStatus = 'error';
@@ -342,6 +347,8 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
             this.cdr.detectChanges();
             return;
         }
+
+        sessionStorage.setItem(this.pendingScanStorageKey, lectureId);
 
         this.scanStatus = 'scanning';
 
@@ -374,7 +381,7 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
         if (!this.userLocation) return;
 
         const activeSession = this.dataService.activeQrSession();
-        const lectureId = activeSession?.lectureId || this.initialScanId;
+        const lectureId = this.resolveLectureId();
 
         // No need to check !lectureId here anymore, checked in handleStartScan
         
@@ -395,6 +402,7 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
                     this.calculateSubjectSummaries();
                     this.isScannerOpen = false;
                     this.scanStatus = 'idle';
+                    sessionStorage.removeItem(this.pendingScanStorageKey);
                     // Refresh schedule to reflect new attendance
                     this.timetableCache = {};
                     this.updateSchedule();
@@ -407,6 +415,31 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
                 this.cdr.detectChanges();
             }
         });
+    }
+
+    private resolveLectureId(): string | null {
+        const activeSession = this.dataService.activeQrSession();
+        if (activeSession?.lectureId) {
+            return activeSession.lectureId;
+        }
+
+        if (this.initialScanId) {
+            return this.initialScanId;
+        }
+
+        const persistedScanId = sessionStorage.getItem(this.pendingScanStorageKey);
+        if (persistedScanId) {
+            return persistedScanId;
+        }
+
+        if (typeof window !== 'undefined') {
+            const scanFromUrl = new URLSearchParams(window.location.search).get('scan');
+            if (scanFromUrl) {
+                return scanFromUrl;
+            }
+        }
+
+        return null;
     }
 
     calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {

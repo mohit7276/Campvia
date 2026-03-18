@@ -38,6 +38,7 @@ export class LandingComponent implements OnInit {
     chatOpen = false;
 
     scanLectureId: string | null = null;
+    private readonly pendingScanStorageKey = 'pending_scan_lecture_id';
 
     constructor(
         public authService: AuthService,
@@ -49,12 +50,19 @@ export class LandingComponent implements OnInit {
         this.checkScroll();
         this.route.queryParams.subscribe(params => {
             if (params['scan']) {
-                this.scanLectureId = params['scan'];
+                const scanId = String(params['scan']);
+                this.scanLectureId = scanId;
+                sessionStorage.setItem(this.pendingScanStorageKey, scanId);
                 // Force open login if there's a scan intent and not logged in
                 if (!this.authService.isLoggedIn()) {
                     this.openAuth('login');
                 } else if (this.authService.currentUser()?.role === 'student') {
                     this.router.navigate(['/dashboard'], { queryParams: { scan: this.scanLectureId } });
+                }
+            } else {
+                const persistedScanId = sessionStorage.getItem(this.pendingScanStorageKey);
+                if (persistedScanId) {
+                    this.scanLectureId = persistedScanId;
                 }
             }
         });
