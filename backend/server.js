@@ -74,6 +74,15 @@ app.use('/api/chat', require('./routes/chat'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/landing/courses', require('./routes/landingCourses'));
 
+// Root route for uptime checks and quick browser verification.
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Campvia backend is running',
+    api: '/api',
+    health: '/api/health',
+  });
+});
+
 // Health check
 app.get('/api', (req, res) => {
   res.json({ message: 'Campvia API is running', health: '/api/health' });
