@@ -197,19 +197,33 @@ router.post('/attendance/mark', async (req, res) => {
       return res.status(400).json({ message: 'No active QR session' });
     }
 
-    // Check if already marked
-    const existing = await Attendance.findOne({ studentId: req.user._id, lectureId });
-    if (existing) return res.status(400).json({ message: 'Attendance already marked' });
+    const markTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
-    const attendance = new Attendance({
-      studentId: req.user._id,
-      date: lecture.date,
-      subject: lecture.subject,
-      status: 'present',
-      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      lectureId
-    });
-    await attendance.save();
+    // Existing lecture record may be auto-created as 'absent'. Upgrade it to
+    // 'present' instead of rejecting the scan.
+    let attendance = await Attendance.findOne({ studentId: req.user._id, lectureId });
+    if (attendance) {
+      if (attendance.status === 'present') {
+        return res.status(400).json({ message: 'Attendance already marked' });
+      }
+      attendance.status = 'present';
+      attendance.timestamp = markTime;
+      attendance.date = lecture.date;
+      attendance.subject = lecture.subject;
+      if (!attendance.courseId) attendance.courseId = lecture.courseId || '';
+      await attendance.save();
+    } else {
+      attendance = new Attendance({
+        studentId: req.user._id,
+        courseId: lecture.courseId || '',
+        date: lecture.date,
+        subject: lecture.subject,
+        status: 'present',
+        timestamp: markTime,
+        lectureId
+      });
+      await attendance.save();
+    }
 
     // Update lecture attendance array
     const studentEntry = lecture.attendance.find(a => a.studentId === req.user._id.toString());

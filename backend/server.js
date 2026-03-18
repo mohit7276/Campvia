@@ -52,6 +52,25 @@ mongoose.connect(process.env.MONGODB_URI)
   })
   .catch(err => console.error('MongoDB connection error:', err));
 
+// Return a clear service-unavailable response when DB is down instead of
+// waiting for Mongoose buffer timeout and returning generic 500 errors.
+app.use('/api', (req, res, next) => {
+  const isHealthOrInfo = req.path === '/' || req.path === '/health';
+  const isUploadAsset = req.path.startsWith('/uploads');
+
+  if (isHealthOrInfo || isUploadAsset) {
+    return next();
+  }
+
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      message: 'Database unavailable. Please try again shortly.',
+    });
+  }
+
+  return next();
+});
+
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin/students', require('./routes/admin/students'));

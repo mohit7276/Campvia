@@ -359,75 +359,45 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     simulateScan() {
         if (!this.userLocation) return;
 
-        let activeSession = this.dataService.activeQrSession();
+        const activeSession = this.dataService.activeQrSession();
+        const lectureId = activeSession?.lectureId || this.initialScanId;
 
-        if (!activeSession && this.initialScanId) {
-            activeSession = {
-                lectureId: 'lxyz',
-                subject: this.initialScanId,
-                location: { lat: this.userLocation.lat + 0.00001, lng: this.userLocation.lng + 0.00001 }
-            };
-        }
-
-        if (!activeSession) {
+        if (!lectureId) {
             this.scanStatus = 'error';
             this.errorMessage = "No active attendance session found.";
             this.cdr.detectChanges();
             return;
         }
 
-        const classroomDistance = this.calculateDistance(
-            this.userLocation.lat, this.userLocation.lng,
-            activeSession.location.lat, activeSession.location.lng
-        );
+        this.api.markAttendance(lectureId, this.userLocation).subscribe({
+            next: (attendance) => {
+                this.scanStatus = 'success';
+                const newRecord: AttendanceRecord = {
+                    id: attendance?._id || Math.random().toString(36).slice(2, 11),
+                    date: attendance?.date || this.todayStr,
+                    subject: attendance?.subject || activeSession?.subject || 'Lecture',
+                    status: attendance?.status || 'present',
+                    timestamp: attendance?.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                };
 
-        if (classroomDistance > 10) {
-            this.scanStatus = 'error';
-            this.errorMessage = `You are not within the 10-meter classroom radius. (Distance: ${classroomDistance.toFixed(1)}m)`;
-            this.cdr.detectChanges();
-            return;
-        }
-
-        const campusDistance = this.calculateDistance(
-            this.userLocation.lat, this.userLocation.lng,
-            CAMPUS_LOCATION.lat, CAMPUS_LOCATION.lng
-        );
-
-        if (campusDistance > 50) {
-            this.scanStatus = 'error';
-            this.errorMessage = `You are not within the 50-meter campus radius. (Distance: ${campusDistance.toFixed(1)}m)`;
-            this.cdr.detectChanges();
-            return;
-        }
-
-        const currentSubject = activeSession.subject;
-        if (this.attendanceRecords.some(r => r.date === this.todayStr && r.subject === currentSubject && r.status === 'present')) {
-            this.scanStatus = 'error';
-            this.errorMessage = "Attendance already logged for today.";
-            this.cdr.detectChanges();
-            return;
-        }
-
-        this.scanStatus = 'success';
-        const newRecord: AttendanceRecord = {
-            id: Math.random().toString(36).substr(2, 9),
-            date: this.todayStr,
-            subject: currentSubject,
-            status: 'present',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-
-        setTimeout(() => {
-            this.attendanceRecords = [newRecord, ...this.attendanceRecords];
-            this.calculateStats();
-            this.calculateSubjectSummaries();
-            this.isScannerOpen = false;
-            this.scanStatus = 'idle';
-            // Refresh schedule to reflect new attendance
-            this.timetableCache = {};
-            this.updateSchedule();
-            this.cdr.detectChanges();
-        }, 1500);
+                setTimeout(() => {
+                    this.attendanceRecords = [newRecord, ...this.attendanceRecords.filter(r => !(r.date === newRecord.date && r.subject === newRecord.subject))];
+                    this.calculateStats();
+                    this.calculateSubjectSummaries();
+                    this.isScannerOpen = false;
+                    this.scanStatus = 'idle';
+                    // Refresh schedule to reflect new attendance
+                    this.timetableCache = {};
+                    this.updateSchedule();
+                    this.cdr.detectChanges();
+                }, 1200);
+            },
+            error: (err) => {
+                this.scanStatus = 'error';
+                this.errorMessage = err?.error?.message || 'Unable to mark attendance right now.';
+                this.cdr.detectChanges();
+            }
+        });
     }
 
     calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {

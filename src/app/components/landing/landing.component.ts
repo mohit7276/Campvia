@@ -82,9 +82,21 @@ export class LandingComponent implements OnInit {
     }
 
     handleLoginSuccess(event: { role: any, email: string }) {
-        this.authService.login(event.email, event.role);
         this.authOpen = false;
-        // Stay on index page as per user request
+
+        const role = this.authService.currentUser()?.role || event.role;
+
+        if (role === 'admin' || role === 'faculty') {
+            this.router.navigate([role === 'faculty' ? '/faculty' : '/admin']);
+            return;
+        }
+
+        if (this.scanLectureId) {
+            this.router.navigate(['/dashboard'], { queryParams: { scan: this.scanLectureId } });
+            return;
+        }
+
+        this.router.navigate(['/dashboard']);
     }
 
     handleLogout() {

@@ -85,6 +85,12 @@ export class AdminAttendancePage implements OnInit {
   currentQrLecture: Lecture | null = null;
   qrStatus: 'idle' | 'generating' | 'ready' | 'error' = 'idle';
   qrErrorMessage = '';
+  qrScanUrl = '';
+
+  get qrImageUrl(): string {
+    if (!this.qrScanUrl) return '';
+    return `https://quickchart.io/qr?size=240&text=${encodeURIComponent(this.qrScanUrl)}`;
+  }
 
   // Form data
   isEditing = false;
@@ -291,16 +297,37 @@ export class AdminAttendancePage implements OnInit {
     this.isQrModalOpen = true;
     this.qrStatus = 'generating';
     this.qrErrorMessage = '';
+    this.qrScanUrl = '';
     this.cdr.detectChanges();
 
     const handleSuccess = (lat: number, lng: number) => {
-      this.qrStatus = 'ready';
-      this.dataService.startQrSession({
-        lectureId: lecture.id,
-        subject: lecture.subject,
-        location: { lat, lng }
+      if (!lecture.id || lecture.id.startsWith('subject-')) {
+        this.qrStatus = 'error';
+        this.qrErrorMessage = 'Please create a lecture entry first, then generate QR.';
+        this.cdr.detectChanges();
+        return;
+      }
+
+      this.api.startQrSession(lecture.id, { lat, lng }).subscribe({
+        next: () => {
+          const origin = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin : '';
+          this.qrScanUrl = origin
+            ? `${origin}/?scan=${encodeURIComponent(lecture.id)}`
+            : `/?scan=${encodeURIComponent(lecture.id)}`;
+          this.qrStatus = 'ready';
+          this.dataService.startQrSession({
+            lectureId: lecture.id,
+            subject: lecture.subject,
+            location: { lat, lng }
+          });
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.qrStatus = 'error';
+          this.qrErrorMessage = err?.error?.message || 'Unable to start QR session.';
+          this.cdr.detectChanges();
+        }
       });
-      this.cdr.detectChanges();
     };
 
     let resolved = false;
@@ -344,9 +371,14 @@ export class AdminAttendancePage implements OnInit {
   }
 
   closeQrModal() {
+    const lectureId = this.currentQrLecture?.id;
     this.isQrModalOpen = false;
     this.currentQrLecture = null;
+    this.qrScanUrl = '';
     this.dataService.stopQrSession();
+    if (lectureId && !lectureId.startsWith('subject-')) {
+      this.api.stopQrSession(lectureId).subscribe({ error: () => { } });
+    }
     this.cdr.detectChanges();
   }
 
