@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
   geminiApiKey: '',
-  apiBaseUrl: 'https://your-backend-service.onrender.com/api'
+  apiBaseUrl: 'https://campvia.onrender.com/api'
 };
