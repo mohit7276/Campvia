@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const Lecture = require('../../models/Lecture');
 const Attendance = require('../../models/Attendance');
 const Student = require('../../models/Student');
@@ -112,12 +113,20 @@ router.post('/:id/qr-session/start', async (req, res) => {
     }
     const lecture = await Lecture.findById(req.params.id);
     if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
+    const sessionToken = crypto.randomBytes(16).toString('hex');
     lecture.qrSession = {
       active: true,
+      token: sessionToken,
+      startedAt: new Date(),
       location: req.body.location
     };
     await lecture.save();
-    res.json({ lectureId: lecture._id, subject: lecture.subject, location: req.body.location });
+    res.json({
+      lectureId: lecture._id,
+      subject: lecture.subject,
+      location: req.body.location,
+      sessionToken
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -131,7 +140,7 @@ router.post('/:id/qr-session/stop', async (req, res) => {
     }
     const lecture = await Lecture.findById(req.params.id);
     if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
-    lecture.qrSession = { active: false, location: { lat: 0, lng: 0 } };
+    lecture.qrSession = { active: false, token: '', startedAt: null, location: { lat: 0, lng: 0 } };
     await lecture.save();
     res.json({ message: 'QR session stopped' });
   } catch (error) {

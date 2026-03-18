@@ -5,6 +5,7 @@ export interface QrSession {
   lectureId: string;
   subject: string;
   location: { lat: number; lng: number };
+  sessionToken?: string;
 }
 
 export interface Course {

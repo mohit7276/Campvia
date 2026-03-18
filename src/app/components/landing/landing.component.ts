@@ -38,7 +38,9 @@ export class LandingComponent implements OnInit {
     chatOpen = false;
 
     scanLectureId: string | null = null;
+    scanToken: string | null = null;
     private readonly pendingScanStorageKey = 'pending_scan_lecture_id';
+    private readonly pendingScanTokenStorageKey = 'pending_scan_qr_token';
 
     constructor(
         public authService: AuthService,
@@ -51,18 +53,29 @@ export class LandingComponent implements OnInit {
         this.route.queryParams.subscribe(params => {
             if (params['scan']) {
                 const scanId = String(params['scan']);
+                const token = params['qr'] ? String(params['qr']) : '';
                 this.scanLectureId = scanId;
+                this.scanToken = token || null;
                 sessionStorage.setItem(this.pendingScanStorageKey, scanId);
+                if (token) {
+                    sessionStorage.setItem(this.pendingScanTokenStorageKey, token);
+                }
                 // Force open login if there's a scan intent and not logged in
                 if (!this.authService.isLoggedIn()) {
                     this.openAuth('login');
                 } else if (this.authService.currentUser()?.role === 'student') {
-                    this.router.navigate(['/dashboard'], { queryParams: { scan: this.scanLectureId } });
+                    const queryParams: Record<string, string> = { scan: this.scanLectureId };
+                    if (this.scanToken) queryParams['qr'] = this.scanToken;
+                    this.router.navigate(['/dashboard'], { queryParams });
                 }
             } else {
                 const persistedScanId = sessionStorage.getItem(this.pendingScanStorageKey);
+                const persistedScanToken = sessionStorage.getItem(this.pendingScanTokenStorageKey);
                 if (persistedScanId) {
                     this.scanLectureId = persistedScanId;
+                }
+                if (persistedScanToken) {
+                    this.scanToken = persistedScanToken;
                 }
             }
         });
@@ -100,7 +113,9 @@ export class LandingComponent implements OnInit {
         }
 
         if (this.scanLectureId) {
-            this.router.navigate(['/dashboard'], { queryParams: { scan: this.scanLectureId } });
+            const queryParams: Record<string, string> = { scan: this.scanLectureId };
+            if (this.scanToken) queryParams['qr'] = this.scanToken;
+            this.router.navigate(['/dashboard'], { queryParams });
             return;
         }
 
@@ -117,7 +132,9 @@ export class LandingComponent implements OnInit {
             if (currentRole === 'admin' || currentRole === 'faculty') {
                 this.router.navigate([currentRole === 'faculty' ? '/faculty' : '/admin']);
             } else {
-                const queryParams = this.scanLectureId ? { scan: this.scanLectureId } : {};
+                const queryParams: Record<string, string> = {};
+                if (this.scanLectureId) queryParams['scan'] = this.scanLectureId;
+                if (this.scanToken) queryParams['qr'] = this.scanToken;
                 this.router.navigate(['/dashboard'], { queryParams });
             }
         } else {

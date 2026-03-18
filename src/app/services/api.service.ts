@@ -85,9 +85,9 @@ export class ApiService {
     return this.get$(`${this.baseUrl}/student/attendance/stats`);
   }
 
-  markAttendance(lectureId: string, location: any): Observable<any> {
+  markAttendance(lectureId: string, location: any, qrToken: string): Observable<any> {
     this.bust(`${this.baseUrl}/student/attendance`);
-    return this.http.post(`${this.baseUrl}/student/attendance/mark`, { lectureId, location }, { headers: this.getHeaders() });
+    return this.http.post(`${this.baseUrl}/student/attendance/mark`, { lectureId, location, qrToken }, { headers: this.getHeaders() });
   }
 
   getFees(): Observable<any> {

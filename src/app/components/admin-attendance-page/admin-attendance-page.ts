@@ -311,16 +311,24 @@ export class AdminAttendancePage implements OnInit {
       }
 
       this.api.startQrSession(lecture.id, { lat, lng }).subscribe({
-        next: () => {
+        next: (res: any) => {
+          const sessionToken = res?.sessionToken || '';
+          if (!sessionToken) {
+            this.qrStatus = 'error';
+            this.qrErrorMessage = 'Secure QR token missing. Please try again.';
+            this.cdr.detectChanges();
+            return;
+          }
           const origin = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin : '';
           this.qrScanUrl = origin
-            ? `${origin}/?scan=${encodeURIComponent(lecture.id)}`
-            : `/?scan=${encodeURIComponent(lecture.id)}`;
+            ? `${origin}/?scan=${encodeURIComponent(lecture.id)}&qr=${encodeURIComponent(sessionToken)}`
+            : `/?scan=${encodeURIComponent(lecture.id)}&qr=${encodeURIComponent(sessionToken)}`;
           this.qrStatus = 'ready';
           this.dataService.startQrSession({
             lectureId: lecture.id,
             subject: lecture.subject,
-            location: { lat, lng }
+            location: { lat, lng },
+            sessionToken
           });
           this.cdr.detectChanges();
         },

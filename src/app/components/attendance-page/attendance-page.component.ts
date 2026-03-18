@@ -75,6 +75,7 @@ export class AttendancePageComponent implements OnInit {
     errorMessage = '';
     userLocation: { lat: number, lng: number } | null = null;
     private readonly pendingScanStorageKey = 'pending_scan_lecture_id';
+    private readonly pendingScanTokenStorageKey = 'pending_scan_qr_token';
 
     // Computed Stats
     stats = {
@@ -100,7 +101,10 @@ export class AttendancePageComponent implements OnInit {
             const scanFromUrl = typeof window !== 'undefined'
                 ? new URLSearchParams(window.location.search).get('scan')
                 : null;
-            if (scanFromUrl) {
+            const tokenFromUrl = typeof window !== 'undefined'
+                ? new URLSearchParams(window.location.search).get('qr')
+                : null;
+            if (scanFromUrl && tokenFromUrl) {
                 setTimeout(() => this.handleStartScan(), 300);
             }
         }
@@ -158,9 +162,17 @@ export class AttendancePageComponent implements OnInit {
         this.errorMessage = '';
 
         const lectureId = this.resolveLectureId();
-        if (lectureId) {
-            sessionStorage.setItem(this.pendingScanStorageKey, lectureId);
+        const qrToken = this.resolveQrToken();
+
+        if (!lectureId || !qrToken) {
+            this.scanStatus = 'error';
+            this.errorMessage = 'Please scan the latest attendance QR code shared by your instructor.';
+            this.cdr.detectChanges();
+            return;
         }
+
+        sessionStorage.setItem(this.pendingScanStorageKey, lectureId);
+        sessionStorage.setItem(this.pendingScanTokenStorageKey, qrToken);
 
         this.scanStatus = 'scanning';
 
@@ -192,8 +204,16 @@ export class AttendancePageComponent implements OnInit {
 
         const activeSession = this.dataService.activeQrSession();
         const lectureId = this.resolveLectureId();
+        const qrToken = this.resolveQrToken();
 
-        this.api.markAttendance(lectureId || '', this.userLocation).subscribe({
+        if (!lectureId || !qrToken) {
+            this.scanStatus = 'error';
+            this.errorMessage = 'Missing secure QR data. Please rescan the QR code.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.api.markAttendance(lectureId, this.userLocation, qrToken).subscribe({
             next: (attendance) => {
                 this.scanStatus = 'success';
                 const newRecord: AttendanceRecord = {
@@ -211,6 +231,7 @@ export class AttendancePageComponent implements OnInit {
                     this.isScannerOpen = false;
                     this.scanStatus = 'idle';
                     sessionStorage.removeItem(this.pendingScanStorageKey);
+                    sessionStorage.removeItem(this.pendingScanTokenStorageKey);
                 }, 1200);
             },
             error: (err) => {
@@ -239,6 +260,27 @@ export class AttendancePageComponent implements OnInit {
             const scanFromUrl = new URLSearchParams(window.location.search).get('scan');
             if (scanFromUrl) {
                 return scanFromUrl;
+            }
+        }
+
+        return null;
+    }
+
+    private resolveQrToken(): string | null {
+        const activeSession = this.dataService.activeQrSession();
+        if (activeSession?.sessionToken) {
+            return activeSession.sessionToken;
+        }
+
+        const persistedToken = sessionStorage.getItem(this.pendingScanTokenStorageKey);
+        if (persistedToken) {
+            return persistedToken;
+        }
+
+        if (typeof window !== 'undefined') {
+            const tokenFromUrl = new URLSearchParams(window.location.search).get('qr');
+            if (tokenFromUrl) {
+                return tokenFromUrl;
             }
         }
 

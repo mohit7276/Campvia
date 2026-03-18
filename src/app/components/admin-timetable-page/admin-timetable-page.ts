@@ -730,16 +730,24 @@ export class AdminTimetablePage implements OnInit {
     const handleSuccess = (lat: number, lng: number) => {
       const startSessionForLecture = (lectureId: string, lectureSubject: string) => {
         this.api.startQrSession(lectureId, { lat, lng }).subscribe({
-          next: () => {
+          next: (res: any) => {
+            const sessionToken = res?.sessionToken || '';
+            if (!sessionToken) {
+              this.qrStatus = 'error';
+              this.qrErrorMessage = 'Secure QR token missing. Please try again.';
+              this.cdr.detectChanges();
+              return;
+            }
             const origin = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin : '';
             this.qrScanUrl = origin
-              ? `${origin}/?scan=${encodeURIComponent(lectureId)}`
-              : `/?scan=${encodeURIComponent(lectureId)}`;
+              ? `${origin}/?scan=${encodeURIComponent(lectureId)}&qr=${encodeURIComponent(sessionToken)}`
+              : `/?scan=${encodeURIComponent(lectureId)}&qr=${encodeURIComponent(sessionToken)}`;
             this.qrStatus = 'ready';
             this.dataService.startQrSession({
               lectureId,
               subject: lectureSubject,
-              location: { lat, lng }
+              location: { lat, lng },
+              sessionToken
             });
             this.cdr.detectChanges();
           },

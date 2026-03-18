@@ -25,6 +25,8 @@ const lectureSchema = new mongoose.Schema({
   // --- QR Attendance Session ---
   qrSession: {
     active:   { type: Boolean, default: false },
+    token:    { type: String, default: '' },
+    startedAt:{ type: Date, default: null },
     location: {
       lat: { type: Number, default: 0 },
       lng: { type: Number, default: 0 }

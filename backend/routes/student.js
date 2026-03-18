@@ -191,31 +191,26 @@ router.get('/attendance/stats', async (req, res) => {
 // Mark attendance (QR scan)
 router.post('/attendance/mark', async (req, res) => {
   try {
-    const { lectureId, location } = req.body;
+    const { lectureId, location, qrToken } = req.body;
     const requestedLectureId = typeof lectureId === 'string' ? lectureId.trim() : '';
-    let lecture = null;
+    const requestedQrToken = typeof qrToken === 'string' ? qrToken.trim() : '';
 
-    if (requestedLectureId && mongoose.isValidObjectId(requestedLectureId)) {
-      lecture = await Lecture.findById(requestedLectureId);
+    if (!requestedLectureId || !mongoose.isValidObjectId(requestedLectureId)) {
+      return res.status(400).json({ message: 'Invalid QR lecture reference. Please scan the QR code again.' });
     }
 
-    // Fallback: if scan query param is missing, use the latest active QR session
-    // for the student's course.
-    if (!lecture) {
-      const courseId = getStudentCourseId(req);
-      if (!courseId) {
-        return res.status(400).json({ message: 'No course assigned to this student.' });
-      }
-
-      lecture = await Lecture.findOne({
-        courseId,
-        'qrSession.active': true
-      }).sort({ updatedAt: -1, createdAt: -1 });
+    if (!requestedQrToken) {
+      return res.status(400).json({ message: 'Invalid QR session token. Please scan the QR code again.' });
     }
+
+    const lecture = await Lecture.findById(requestedLectureId);
 
     if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
     if (!lecture.qrSession || !lecture.qrSession.active) {
       return res.status(400).json({ message: 'No active attendance session found' });
+    }
+    if (lecture.qrSession.token !== requestedQrToken) {
+      return res.status(400).json({ message: 'QR session mismatch. Please scan the latest QR code.' });
     }
 
     const markTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });

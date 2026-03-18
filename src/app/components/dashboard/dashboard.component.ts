@@ -41,6 +41,7 @@ export class DashboardComponent implements OnInit {
     isSidebarOpen = false;
     initialScanId: string | null = null;
     private readonly pendingScanStorageKey = 'pending_scan_lecture_id';
+    private readonly pendingScanTokenStorageKey = 'pending_scan_qr_token';
 
     navItems = [
         { id: 'home', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', label: 'Dashboard Home' },
@@ -91,6 +92,9 @@ export class DashboardComponent implements OnInit {
                 const scanId = String(params['scan']);
                 this.initialScanId = scanId;
                 sessionStorage.setItem(this.pendingScanStorageKey, scanId);
+                if (params['qr']) {
+                    sessionStorage.setItem(this.pendingScanTokenStorageKey, String(params['qr']));
+                }
                 this.activeSection = 'timetable';
                 return;
             }
