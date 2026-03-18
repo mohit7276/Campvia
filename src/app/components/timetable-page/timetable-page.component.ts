@@ -139,9 +139,8 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
         this.loadTodaySchedule();
 
         if (this.initialScanId) {
-            setTimeout(() => {
-                this.handleStartScan();
-            }, 500);
+            // Wait for user to tap to prevent browser autoplay/geolocation blocking
+            this.scanStatus = 'idle';
         }
     }
 
@@ -331,9 +330,20 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     }
 
     handleStartScan() {
-        this.scanStatus = 'scanning';
         this.isScannerOpen = true;
         this.errorMessage = '';
+
+        const activeSession = this.dataService.activeQrSession();
+        const lectureId = activeSession?.lectureId || this.initialScanId;
+
+        if (!lectureId) {
+            this.scanStatus = 'error';
+            this.errorMessage = "Please use your phone's native camera to scan the QR code shown by your instructor first.";
+            this.cdr.detectChanges();
+            return;
+        }
+
+        this.scanStatus = 'scanning';
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -342,16 +352,20 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
                     setTimeout(() => this.simulateScan(), 2000);
                     this.cdr.detectChanges();
                 },
-                () => {
+                (error) => {
                     this.scanStatus = 'location-denied';
-                    this.errorMessage = "Enable GPS to mark attendance.";
+                    let errorMsg = `GPS Error: ${error.message}`;
+                    if (error.code === 1) { // PERMISSION_DENIED
+                        errorMsg = "Browser blocked location. Please allow Location permissions in your browser settings.";
+                    }
+                    this.errorMessage = errorMsg;
                     this.cdr.detectChanges();
                 },
-                { enableHighAccuracy: true }
+                { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
             );
         } else {
             this.scanStatus = 'error';
-            this.errorMessage = "Geolocation unsupported.";
+            this.errorMessage = "Geolocation is not supported by your browser.";
             this.cdr.detectChanges();
         }
     }
@@ -362,14 +376,9 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
         const activeSession = this.dataService.activeQrSession();
         const lectureId = activeSession?.lectureId || this.initialScanId;
 
-        if (!lectureId) {
-            this.scanStatus = 'error';
-            this.errorMessage = "No active attendance session found.";
-            this.cdr.detectChanges();
-            return;
-        }
-
-        this.api.markAttendance(lectureId, this.userLocation).subscribe({
+        // No need to check !lectureId here anymore, checked in handleStartScan
+        
+        this.api.markAttendance(lectureId as string, this.userLocation).subscribe({
             next: (attendance) => {
                 this.scanStatus = 'success';
                 const newRecord: AttendanceRecord = {

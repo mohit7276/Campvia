@@ -95,10 +95,7 @@ export class AttendancePageComponent implements OnInit {
         });
 
         if (this.initialScanId) {
-            // Wait slightly for UI to settle before attempting scan
-            setTimeout(() => {
-                this.handleStartScan();
-            }, 500);
+            this.scanStatus = 'idle';
         }
     }
 
@@ -150,9 +147,19 @@ export class AttendancePageComponent implements OnInit {
     }
 
     handleStartScan() {
-        this.scanStatus = 'scanning';
         this.isScannerOpen = true;
         this.errorMessage = '';
+
+        const activeSession = this.dataService.activeQrSession();
+        const lectureId = activeSession?.lectureId || this.initialScanId;
+
+        if (!lectureId) {
+            this.scanStatus = 'error';
+            this.errorMessage = "Please use your phone's native camera to scan the QR code shown by your instructor first.";
+            return;
+        }
+
+        this.scanStatus = 'scanning';
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -161,15 +168,19 @@ export class AttendancePageComponent implements OnInit {
                     // Simulate scan after getting location
                     setTimeout(() => this.simulateScan(), 2000);
                 },
-                () => {
+                (error) => {
                     this.scanStatus = 'location-denied';
-                    this.errorMessage = "Enable GPS to mark attendance.";
+                    let errorMsg = `GPS Error: ${error.message}`;
+                    if (error.code === 1) { // PERMISSION_DENIED
+                        errorMsg = "Browser blocked location. Please allow Location permissions in your browser settings.";
+                    }
+                    this.errorMessage = errorMsg;
                 },
-                { enableHighAccuracy: true }
+                { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
             );
         } else {
             this.scanStatus = 'error';
-            this.errorMessage = "Geolocation unsupported.";
+            this.errorMessage = "Geolocation is not supported by your browser.";
         }
     }
 
@@ -179,13 +190,9 @@ export class AttendancePageComponent implements OnInit {
         const activeSession = this.dataService.activeQrSession();
         const lectureId = activeSession?.lectureId || this.initialScanId;
 
-        if (!lectureId) {
-            this.scanStatus = 'error';
-            this.errorMessage = "No active attendance session found.";
-            return;
-        }
+        // Checked in handleStartScan
 
-        this.api.markAttendance(lectureId, this.userLocation).subscribe({
+        this.api.markAttendance(lectureId as string, this.userLocation).subscribe({
             next: (attendance) => {
                 this.scanStatus = 'success';
                 const newRecord: AttendanceRecord = {
