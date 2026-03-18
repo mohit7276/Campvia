@@ -1,0 +1,350 @@
+﻿<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-[reveal_0.6s_ease-out] items-start">
+
+    <!-- LEFT COLUMN: Roadmap -->
+    <div [ngClass]="authService.currentUser()?.role === 'faculty' ? 'lg:col-span-4' : 'lg:col-span-3'">
+        <div (click)="navigateTo('timetable')"
+            class="bg-gradient-to-br from-white to-slate-50/30 p-5 rounded-[2rem] shadow-md hover:shadow-2xl hover:-translate-y-1.5 transition-all border border-slate-100 relative overflow-hidden group cursor-pointer"
+            [ngClass]="authService.currentUser()?.role === 'faculty' ? 'min-h-[580px] lg:h-[700px]' : 'min-h-[560px] lg:h-[672px]'">
+            <div
+                class="absolute -top-16 -right-16 w-40 h-40 bg-slate-100/20 rounded-full blur-3xl transition-transform group-hover:scale-150 duration-700">
+            </div>
+
+            <div
+                class="absolute top-4 right-4 p-2.5 rounded-xl bg-slate-100 text-slate-600 shadow-sm z-20 group-hover:scale-110 transition-transform">
+                <lucide-icon [img]="Calendar" class="w-5 h-5"></lucide-icon>
+            </div>
+
+            <h2
+                class="text-lg font-black text-slate-900 mb-1 group-hover:text-slate-700 transition-colors relative z-10">
+                Daily Roadmap</h2>
+            <p class="text-slate-500 text-[9px] font-bold mb-5 uppercase tracking-widest relative z-10">
+                Today, {{ todayDateDisplay }}
+            </p>
+
+            <div class="space-y-2.5 relative overflow-y-auto pr-2 custom-scrollbar"
+                [ngClass]="authService.currentUser()?.role === 'faculty' ? 'h-[380px] lg:h-[510px]' : 'h-[360px] lg:h-[480px]'">
+                <ng-container *ngIf="combinedSchedule.length > 0; else emptySchedule">
+                    <div *ngFor="let item of combinedSchedule"
+                        class="p-3.5 rounded-xl transition-all border relative group/item cursor-pointer" [ngClass]="[
+                  item.active ? 'bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-lg shadow-slate-900/30 border-slate-800' : 'bg-slate-50/50 border-slate-100 hover:border-slate-200 hover:bg-white/60 hover:shadow-sm',
+                  item.isTodo ? 'border-l-4 border-l-blue-500' : ''
+                ]">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex-1">
+                                <span class="text-[8px] font-bold uppercase tracking-wider block mb-1"
+                                    [ngClass]="item.active ? 'text-slate-400' : 'text-slate-500'">{{ item.time }}</span>
+                                <h4 class="text-[11px] font-black truncate mb-1"
+                                    [ngClass]="item.active ? 'text-white' : 'text-slate-900'">{{ item.name }}</h4>
+                            </div>
+                            <span
+                                class="text-[8px] font-bold uppercase px-2 py-1 rounded-lg shrink-0 whitespace-nowrap ml-2"
+                                [ngClass]="item.active ? 'bg-blue-500/80 text-white' : item.isTodo ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-600'">
+                                {{ item.isTodo ? 'Personal' : item.room }}
+                            </span>
+                        </div>
+                        <div class="flex items-center space-x-1.5 text-[9px] font-medium"
+                            [ngClass]="item.active ? 'text-slate-300' : 'text-slate-600'">
+                            <lucide-icon [img]="Clock" class="w-3 h-3"></lucide-icon>
+                            <span>{{ item.duration }}</span>
+                        </div>
+                    </div>
+                </ng-container>
+                <ng-template #emptySchedule>
+                    <div
+                        class="flex flex-col items-center justify-center h-full text-center py-20 px-6 animate-[reveal_0.4s_ease-out]">
+                        <div
+                            class="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mb-6 text-slate-400 group-hover:scale-110 transition-transform duration-500">
+                            <lucide-icon [img]="Calendar" class="w-10 h-10"></lucide-icon>
+                        </div>
+                        <h3 class="text-base font-black text-slate-900 mb-2 tracking-tight">Clear Skies Today!</h3>
+                        <p
+                            class="text-[11px] text-slate-500 font-bold leading-relaxed uppercase tracking-wider mb-4 opacity-60">
+                            No Classes Scheduled</p>
+                        <p
+                            class="text-[12px] text-slate-600 font-medium leading-relaxed bg-slate-50 p-4 rounded-2xl border border-dashed border-slate-200">
+                            A perfect chance to catch up on assignments, dive into some self-study, or simply recharge
+                            for tomorrow.
+                        </p>
+                    </div>
+                </ng-template>
+            </div>
+
+            <button (click)="$event.stopPropagation(); navigateTo('timetable')"
+                class="w-full py-3 mt-12 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl hover:shadow-2xl active:scale-95 relative z-10">
+                Show Time Table →
+            </button>
+        </div>
+    </div>
+
+    <!-- MIDDLE COLUMN -->
+    <div class="flex flex-col gap-8"
+        [ngClass]="authService.currentUser()?.role === 'faculty' ? 'lg:col-span-4' : 'lg:col-span-6'">
+        <!-- Row 1: Fees & Score -->
+        <div *ngIf="authService.currentUser()?.role !== 'faculty'"
+            class="grid grid-cols-1 md:grid-cols-2 gap-8 md:h-[230px]">
+            <div (click)="navigateTo('fees')"
+                class="bg-gradient-to-br from-white to-red-50/30 p-6 rounded-[2.5rem] shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all border border-red-100 relative flex flex-col h-full group cursor-pointer overflow-hidden">
+                <div
+                    class="absolute -top-16 -right-16 w-40 h-40 bg-red-100/20 rounded-full blur-3xl transition-transform group-hover:scale-150 duration-700">
+                </div>
+                <div
+                    class="absolute top-4 right-4 p-2 rounded-xl bg-red-100 text-red-600 group-hover:scale-110 transition-transform">
+                    <lucide-icon [img]="AlertCircle" class="w-4 h-4"></lucide-icon>
+                </div>
+                <h4 class="text-xs font-black text-slate-900 mb-2 relative z-10">Due Fees</h4>
+                <p class="text-[9px] text-slate-500 font-bold mb-2 uppercase tracking-widest relative z-10">Current
+                    Semester</p>
+
+                <div class="mt-3 grid grid-cols-2 gap-2 mb-3 relative z-10">
+                    <div class="p-1 rounded-lg border text-center"
+                        [ngClass]="totalPending > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'">
+                        <p class="text-[8px] text-slate-600 font-semibold mb-0.5">Pending</p>
+                        <p class="text-lg font-black"
+                            [ngClass]="totalPending > 0 ? 'text-red-600' : 'text-emerald-600'">
+                            ₹{{ totalPending | number }}
+                        </p>
+                    </div>
+                    <div class="p-1 rounded-lg border text-center"
+                        [ngClass]="hasOverdue ? 'bg-red-50 border-red-200' : totalPending > 0 ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'">
+                        <p class="text-[8px] text-slate-600 font-semibold mb-0.5">Status</p>
+                        <p class="text-lg font-black"
+                            [ngClass]="hasOverdue ? 'text-red-600' : totalPending > 0 ? 'text-amber-600' : 'text-emerald-600'">
+                            {{ hasOverdue ? 'Overdue' : totalPending > 0 ? 'Due' : 'Clear' }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-auto relative z-10">
+                    <p *ngIf="earliestDueDate && totalPending > 0" class="text-[10px] text-slate-600 font-medium mb-2">Due: <span
+                            [ngClass]="hasOverdue ? 'text-red-600' : 'text-amber-600'"
+                            class="font-bold">{{ earliestDueDate | date:'MMM d, yyyy' }}</span></p>
+                    <button (click)="$event.stopPropagation(); navigateTo('fees')"
+                        class="w-full py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95">
+                        Pay Now
+                    </button>
+                </div>
+            </div>
+
+            <div (click)="navigateTo('upcoming-tests')"
+                class="bg-gradient-to-br from-white to-blue-50/30 p-6 rounded-[2.5rem] shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all border border-blue-100 relative flex flex-col h-full group cursor-pointer overflow-hidden">
+                <div
+                    class="absolute -top-16 -right-16 w-40 h-40 bg-blue-100/20 rounded-full blur-3xl transition-transform group-hover:scale-150 duration-700">
+                </div>
+                <div
+                    class="absolute top-4 right-4 p-2 rounded-xl bg-blue-100 text-blue-600 group-hover:scale-110 transition-transform">
+                    <lucide-icon [img]="TrendingUp" class="w-4 h-4"></lucide-icon>
+                </div>
+                <h4 class="text-xs font-black text-slate-900 mb-1 relative z-10">Academic analysis</h4>
+                <p class="text-[9px] text-slate-500 font-bold mb-3 uppercase tracking-widest relative z-10">Academic Score
+                </p>
+
+                <div class="mt-3 grid grid-cols-2 gap-2 mb-3 relative z-10">
+                    <div class="p-1 bg-blue-50 rounded-lg border border-blue-200 text-center">
+                        <p class="text-[8px] text-slate-600 font-semibold mb-0.5">Rank</p>
+                        <p class="text-lg font-black text-blue-600">{{ classRank > 0 ? ('#' + classRank) : '--' }}</p>
+                    </div>
+                    <div class="p-1 bg-emerald-50 rounded-lg border border-emerald-200 text-center">
+                        <p class="text-[8px] text-slate-600 font-semibold mb-0.5">Avg Score</p>
+                        <p class="text-lg font-black text-emerald-600">{{ hasScores ? (avgScore + '%') : '--' }}</p>
+                    </div>
+                </div>
+
+                <div class="mt-auto relative z-10">
+                    <button (click)="$event.stopPropagation(); navigateTo('upcoming-tests')"
+                        class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95">
+                        View Details
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Notices & Attendance -->
+        <div class="grid gap-8"
+            [ngClass]="authService.currentUser()?.role === 'faculty' ? 'grid-cols-1 h-auto' : 'grid-cols-1 md:grid-cols-2 md:h-[200px]'">
+            <div (click)="navigateTo('notices')"
+                class="bg-white p-8 rounded-[2.5rem] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all border border-slate-100 relative flex flex-col group cursor-pointer overflow-hidden"
+                [ngClass]="authService.currentUser()?.role === 'faculty' ? 'min-h-[520px] lg:h-[700px]' : 'min-h-[420px] lg:h-[420px]'">
+                <div
+                    class="absolute -top-10 -left-10 w-24 h-24 bg-blue-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700">
+                </div>
+
+                <div class="absolute top-4 right-4 p-2.5 rounded-xl bg-blue-100 text-blue-600 shadow-sm z-20">
+                    <lucide-icon [img]="Bell" class="w-5 h-5"></lucide-icon>
+                </div>
+
+                <h4
+                    class="text-lg font-black text-slate-900 mb-6 group-hover:text-blue-600 transition-colors relative z-10">
+                    Campus Highlights</h4>
+                <div class="space-y-3 relative z-10 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                    <div *ngFor="let notice of noticesData"
+                        class="flex items-center justify-between p-3.5 rounded-2xl border transition-all group/not hover:shadow-md hover:scale-102"
+                        [ngClass]="notice.color">
+                        <div class="flex items-center space-x-3 flex-1 min-w-0">
+                            <span class="text-lg shrink-0">
+                                <lucide-icon *ngIf="notice.iconType === 'clipboard'" [img]="BookOpen"
+                                    class="w-4 h-4"></lucide-icon>
+                                <lucide-icon *ngIf="notice.iconType === 'target'" [img]="CheckCircle2"
+                                    class="w-4 h-4"></lucide-icon>
+                                <lucide-icon *ngIf="notice.iconType === 'settings'" [img]="GraduationCap"
+                                    class="w-4 h-4"></lucide-icon>
+                            </span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">{{
+                                    notice.tag }}</p>
+                                <h5
+                                    class="text-[12px] font-bold text-slate-700 line-clamp-1 group-hover/not:text-slate-900">
+                                    {{ notice.title }}</h5>
+                            </div>
+                        </div>
+                        <span
+                            class="text-[10px] font-bold text-slate-600 whitespace-nowrap ml-2 px-2.5 py-1 bg-white/60 rounded-lg backdrop-blur-sm">{{
+                            notice.date | date:'MMM d' }}</span>
+                    </div>
+                </div>
+                <button (click)="$event.stopPropagation(); navigateTo('notices')"
+                    class="w-full py-3 px-4 mt-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95">
+                    View All Notices →
+                </button>
+            </div>
+
+            <div *ngIf="authService.currentUser()?.role !== 'faculty'" (click)="navigateTo('timetable')"
+                class="bg-gradient-to-br from-white to-teal-50/30 p-6 rounded-[2.5rem] shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all border border-teal-100 flex flex-col min-h-[360px] lg:h-[410px] relative overflow-hidden group cursor-pointer">
+                <div class="absolute top-4 right-4 p-2.5 rounded-xl bg-teal-100 text-teal-600 shadow-sm">
+                    <lucide-icon [img]="CheckCircle2" class="w-5 h-5"></lucide-icon>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-black text-slate-900 mb-0.5">Today's Attendance</h4>
+                    <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest mb-4">
+                        {{ todayFullDateDisplay }}
+                    </p>
+                </div>
+
+                <div class="space-y-2 flex-1 overflow-y-auto custom-scrollbar">
+                    <ng-container *ngIf="attendanceData.length > 0; else noAttendance">
+                    <div *ngFor="let record of attendanceData"
+                        class="p-2.5 rounded-lg border border-teal-100 hover:bg-white/60 transition-colors group/item">
+                        <div class="flex items-start justify-between mb-1">
+                            <div class="flex-1 min-w-0">
+                                <h5 class="text-[10px] font-bold text-slate-900">{{ record.subject }}</h5>
+                                <p class="text-[8px] text-slate-500 mt-0.5">{{ record.period }}</p>
+                            </div>
+                            <div class="flex flex-col items-end ml-2 shrink-0">
+                                <div class="px-2 py-0.5 rounded-lg text-[8px] font-black" [ngClass]="record.color">{{
+                                    record.status }}</div>
+                                <p class="text-[7px] text-slate-400 mt-1">{{ record.date | date:'MMM d' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    </ng-container>
+                    <ng-template #noAttendance>
+                        <div class="flex flex-col items-center justify-center h-full text-center py-8">
+                            <div class="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-3">
+                                <lucide-icon [img]="CheckCircle2" class="w-5 h-5 text-teal-300"></lucide-icon>
+                            </div>
+                            <p class="text-[10px] font-bold text-slate-500">No classes today</p>
+                            <p class="text-[9px] text-slate-400 mt-1">Your schedule is clear for today</p>
+                        </div>
+                    </ng-template>
+                </div>
+
+                <button (click)="$event.stopPropagation(); navigateTo('timetable')"
+                    class="w-full py-3 px-4 mt-3 bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95">
+                    View All Attendance →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Assignments & Tests -->
+    <div class="flex flex-col gap-8"
+        [ngClass]="authService.currentUser()?.role === 'faculty' ? 'lg:col-span-4' : 'lg:col-span-3'">
+        <div (click)="navigateTo('assignments')"
+            class="bg-gradient-to-br from-white to-indigo-50/30 p-6 rounded-[2.5rem] shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all border border-indigo-100 flex flex-col relative overflow-hidden group cursor-pointer"
+            [ngClass]="authService.currentUser()?.role === 'faculty' ? 'min-h-[230px] lg:h-[250px]' : 'min-h-[220px] lg:h-[230px]'">
+            <div
+                class="absolute -top-16 -right-16 w-40 h-40 bg-indigo-100/20 rounded-full blur-3xl transition-transform group-hover:scale-150 duration-700">
+            </div>
+            <div
+                class="absolute top-4 right-4 p-2 rounded-xl bg-indigo-100 text-indigo-600 group-hover:scale-110 transition-transform">
+                <lucide-icon [img]="BookOpen" class="w-4 h-4"></lucide-icon>
+            </div>
+            <h4
+                class="text-xs font-black text-slate-900 mb-1 group-hover:text-indigo-600 transition-colors relative z-10">
+                Assignments</h4>
+            <p class="text-[9px] text-slate-500 font-bold mb-3 uppercase tracking-widest relative z-10">
+                {{ authService.currentUser()?.role === 'faculty' ? 'All Courses Overview' : 'Current Progress' }}
+            </p>
+
+            <!-- Faculty view: Published / Closed -->
+            <div *ngIf="authService.currentUser()?.role === 'faculty'" class="mt-3 grid grid-cols-2 gap-2 mb-3 relative z-10">
+                <div class="p-1 bg-blue-50 rounded-lg border border-blue-200 text-center">
+                    <p class="text-[8px] text-slate-600 font-semibold mb-0.5">Published</p>
+                    <p class="text-lg font-black text-blue-600">{{ publishedCount }}</p>
+                </div>
+                <div class="p-1 bg-slate-100 rounded-lg border border-slate-200 text-center">
+                    <p class="text-[8px] text-slate-600 font-semibold mb-0.5">Closed</p>
+                    <p class="text-lg font-black text-slate-500">{{ closedCount }}</p>
+                </div>
+            </div>
+
+            <!-- Student view: Submitted / Pending -->
+            <div *ngIf="authService.currentUser()?.role !== 'faculty'" class="mt-3 grid grid-cols-2 gap-2 mb-3 relative z-10">
+                <div class="p-1 bg-emerald-50 rounded-lg border border-emerald-200 text-center">
+                    <p class="text-[8px] text-slate-600 font-semibold mb-0.5">Submitted</p>
+                    <p class="text-lg font-black text-emerald-600">{{ submittedCount }}</p>
+                </div>
+                <div class="p-1 bg-orange-50 rounded-lg border border-orange-200 text-center">
+                    <p class="text-[8px] text-slate-600 font-semibold mb-0.5">Pending</p>
+                    <p class="text-lg font-black text-orange-600">{{ pendingCount }}</p>
+                </div>
+            </div>
+
+            <div class="mt-auto relative z-10">
+                <button (click)="$event.stopPropagation(); navigateTo('assignments')"
+                    class="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95">
+                    {{ authService.currentUser()?.role === 'faculty' ? 'View Assignments' : 'Submit Assignment' }}
+                </button>
+            </div>
+        </div>
+
+        <div (click)="navigateTo('upcoming-tests')"
+            class="bg-gradient-to-br from-white to-violet-50/30 p-6 rounded-[2.5rem] shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all border border-violet-100 relative flex flex-col group cursor-pointer overflow-hidden"
+            [ngClass]="authService.currentUser()?.role === 'faculty' ? 'min-h-[360px] lg:h-[418px]' : 'min-h-[350px] lg:h-[410px]'">
+            <div
+                class="absolute -top-16 -right-16 w-40 h-40 bg-violet-100/20 rounded-full blur-3xl transition-transform group-hover:scale-150 duration-700">
+            </div>
+            <div
+                class="absolute top-4 right-4 p-2 rounded-xl bg-violet-100 text-violet-600 group-hover:scale-110 transition-transform">
+                <lucide-icon [img]="GraduationCap" class="w-4 h-4"></lucide-icon>
+            </div>
+            <h4
+                class="text-xs font-black text-slate-900 mb-1 group-hover:text-violet-600 transition-colors relative z-10">
+                Upcoming Tests</h4>
+            <p class="text-[9px] text-slate-500 font-bold mb-4 uppercase tracking-widest relative z-10">Assessment
+                Calendar</p>
+            <div class="flex-1 space-y-2.5 overflow-y-auto custom-scrollbar pr-2 relative z-10">
+                <div *ngFor="let test of upcomingTests"
+                    class="flex items-start p-3 rounded-xl border transition-all group/test"
+                    [ngClass]="test.urgent ? 'bg-red-50 border-red-200 hover:bg-red-100 hover:shadow-md' : 'bg-blue-50 border-blue-200 hover:bg-blue-100 hover:shadow-md'">
+                    <div class="shrink-0 w-2 h-2 rounded-full mt-1.5 mr-3"
+                        [ngClass]="test.urgent ? 'bg-red-500 shadow-lg shadow-red-500/50 animate-pulse' : 'bg-violet-600'">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between mb-0.5 gap-2">
+                            <h5 class="text-[11px] font-black text-slate-900 truncate">{{ test.name }}</h5>
+                            <span class="text-[8px] font-bold shrink-0 whitespace-nowrap px-2 py-0.5 rounded-lg"
+                                [ngClass]="test.urgent ? 'bg-red-200 text-red-700' : 'bg-violet-200 text-violet-700'">{{
+                                test.date }}</span>
+                        </div>
+                        <p class="text-[9px] font-medium text-slate-600 line-clamp-1">{{ test.desc }}</p>
+                    </div>
+                </div>
+            </div>
+            <button (click)="$event.stopPropagation(); navigateTo('upcoming-tests')"
+                class="w-full py-3 px-4 mt-3 bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-lg hover:scale-105 active:scale-95">
+                View All Exams →
+            </button>
+        </div>
+    </div>
+</div>

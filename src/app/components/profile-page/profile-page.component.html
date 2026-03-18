@@ -1,0 +1,338 @@
+<!-- Loading State -->
+<div *ngIf="loading" class="flex items-center justify-center py-20">
+    <div class="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+</div>
+
+<!-- Profile Content -->
+<div *ngIf="!loading && profile" class="animate-[reveal_0.4s_ease-out]">
+
+    <!-- Success / Error Messages -->
+    <div *ngIf="successMessage"
+        class="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center space-x-3">
+        <svg class="w-5 h-5 text-emerald-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <span class="text-sm font-bold text-emerald-700">{{ successMessage }}</span>
+    </div>
+    <div *ngIf="errorMessage"
+        class="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center space-x-3">
+        <svg class="w-5 h-5 text-red-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        <span class="text-sm font-bold text-red-700">{{ errorMessage }}</span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- LEFT: Profile Card -->
+        <div class="lg:col-span-1 space-y-6">
+            <div
+                class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm text-center relative overflow-hidden group">
+                <div class="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
+
+                <!-- Avatar -->
+                <div class="relative mx-auto w-32 h-32 mb-6">
+                    <img *ngIf="profile.avatar" [src]="profile.avatar"
+                        class="w-32 h-32 rounded-[2rem] border-4 border-slate-50 shadow-xl object-cover group-hover:scale-105 transition-transform"
+                        alt="Avatar" />
+                    <div *ngIf="!profile.avatar"
+                        class="w-32 h-32 rounded-[2rem] bg-blue-600 flex items-center justify-center text-white text-3xl font-black shadow-xl group-hover:scale-105 transition-transform">
+                        {{ getInitials() }}
+                    </div>
+                </div>
+
+                <h3 class="text-2xl font-black text-slate-900 mb-1">{{ profile.name }}</h3>
+                <p class="text-blue-600 font-bold text-xs uppercase tracking-widest mb-1">{{ profile.email }}</p>
+                <p *ngIf="profile.rollNo"
+                    class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mb-6">
+                    Roll No: {{ profile.rollNo }}
+                </p>
+
+                <div class="flex justify-center space-x-2 mb-6 flex-wrap gap-y-2">
+                    <span class="px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border"
+                        [ngClass]="getStatusColor()">
+                        {{ profile.status || 'Active' }}
+                    </span>
+                    <span *ngIf="profile.course"
+                        class="px-4 py-1.5 bg-blue-50 text-blue-600 border border-blue-200 rounded-xl text-[10px] font-black uppercase tracking-widest">
+                        {{ profile.course }}
+                    </span>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="space-y-2" *ngIf="!isEditing">
+                    <button (click)="startEditing()"
+                        class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95">
+                        Edit Profile
+                    </button>
+                    <button (click)="openPasswordModal()"
+                        class="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all">
+                        Change Password
+                    </button>
+                    <button (click)="openDeleteModal()"
+                        class="w-full py-3 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl transition-all">
+                        Delete Account
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Details -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- VIEW MODE -->
+            <ng-container *ngIf="!isEditing">
+                <!-- Personal Information -->
+                <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <h4 class="text-xl font-black text-slate-900 mb-6">Personal Information</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Full Name</p>
+                            <p class="text-sm font-bold text-slate-900">{{ profile.name || '--' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Email</p>
+                            <p class="text-sm font-bold text-slate-900">{{ profile.email || '--' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Phone</p>
+                            <p class="text-sm font-bold text-slate-900">{{ profile.phone || '--' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Location</p>
+                            <p class="text-sm font-bold text-slate-900">{{ profile.location || '--' }}</p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Address</p>
+                            <p class="text-sm font-bold text-slate-900">{{ profile.address || '--' }}</p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-1">Bio</p>
+                            <p class="text-sm font-bold text-slate-900">{{ profile.bio || '--' }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Academic Information -->
+                <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <h4 class="text-xl font-black text-slate-900 mb-6">Academic Information</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                            <p class="text-[10px] uppercase font-bold text-slate-400 mb-2 tracking-widest">Avg Score</p>
+                            <p class="text-3xl font-black text-slate-900">{{ profileAvgScore > 0 ? (profileAvgScore + '%') : '--' }}</p>
+                        </div>
+                        <div class="p-5 bg-slate-50 rounded-2xl border border-slate-100 text-center">
+                            <p class="text-[10px] uppercase font-bold text-slate-400 mb-2 tracking-widest">Class Rank
+                            </p>
+                            <p class="text-3xl font-black text-slate-900">{{ profileRank > 0 ? ('#' + profileRank) : '--' }}</p>
+                        </div>
+                        <div class="p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100 text-center">
+                            <p class="text-[10px] uppercase font-bold text-emerald-600 mb-2 tracking-widest">Semester
+                            </p>
+                            <p class="text-3xl font-black text-emerald-600">{{ profile.semester || '1' }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enrolled Program -->
+                <div
+                    class="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/20 transition-all duration-1000">
+                    </div>
+                    <h4 class="text-lg font-bold mb-3 relative z-10">Enrolled Program</h4>
+                    <p class="text-slate-400 text-sm mb-1 relative z-10 uppercase tracking-widest font-bold">Course</p>
+                    <p
+                        class="text-2xl font-black relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 mb-4">
+                        {{ profile.course || 'No Course Assigned' }}
+                    </p>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 relative z-10">
+                        <div class="bg-white/5 rounded-xl p-3 border border-white/10">
+                            <p class="text-[9px] font-black uppercase text-slate-500 mb-1">Year</p>
+                            <p class="text-sm font-bold">{{ profile.year || '--' }}</p>
+                        </div>
+                        <div class="bg-white/5 rounded-xl p-3 border border-white/10">
+                            <p class="text-[9px] font-black uppercase text-slate-500 mb-1">Semester</p>
+                            <p class="text-sm font-bold">{{ profile.semester || '--' }}</p>
+                        </div>
+                        <div class="bg-white/5 rounded-xl p-3 border border-white/10">
+                            <p class="text-[9px] font-black uppercase text-slate-500 mb-1">Roll No</p>
+                            <p class="text-sm font-bold">{{ profile.rollNo || '--' }}</p>
+                        </div>
+                        <div class="bg-white/5 rounded-xl p-3 border border-white/10">
+                            <p class="text-[9px] font-black uppercase text-slate-500 mb-1">Specialization</p>
+                            <p class="text-sm font-bold">{{ profile.specialization || '--' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </ng-container>
+
+            <!-- EDIT MODE -->
+            <ng-container *ngIf="isEditing">
+                <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <div class="flex items-center justify-between mb-6">
+                        <h4 class="text-xl font-black text-slate-900">Edit Profile</h4>
+                        <button (click)="cancelEditing()"
+                            class="text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">
+                            Cancel
+                        </button>
+                    </div>
+
+                    <div class="space-y-5">
+                        <!-- Name -->
+                        <div>
+                            <label class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Full
+                                Name</label>
+                            <input [(ngModel)]="editForm.name" type="text"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="Your name" />
+                        </div>
+
+                        <!-- Phone -->
+                        <div>
+                            <label
+                                class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Phone</label>
+                            <input [(ngModel)]="editForm.phone" type="tel"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="Phone number" />
+                        </div>
+
+                        <!-- Location -->
+                        <div>
+                            <label
+                                class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Location</label>
+                            <input [(ngModel)]="editForm.location" type="text"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="City, State" />
+                        </div>
+
+                        <!-- Address -->
+                        <div>
+                            <label
+                                class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Address</label>
+                            <textarea [(ngModel)]="editForm.address" rows="2"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                                placeholder="Full address"></textarea>
+                        </div>
+
+                        <!-- Bio -->
+                        <div>
+                            <label
+                                class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Bio</label>
+                            <textarea [(ngModel)]="editForm.bio" rows="3"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                                placeholder="Tell us about yourself"></textarea>
+                        </div>
+
+                        <!-- Specialization -->
+                        <div>
+                            <label
+                                class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Specialization</label>
+                            <input [(ngModel)]="editForm.specialization" type="text"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="e.g. Machine Learning" />
+                        </div>
+
+                        <!-- Avatar URL -->
+                        <div>
+                            <label
+                                class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Avatar
+                                URL</label>
+                            <input [(ngModel)]="editForm.avatar" type="url"
+                                class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                placeholder="https://example.com/avatar.jpg" />
+                        </div>
+
+                        <!-- Save Button -->
+                        <button (click)="saveProfile()" [disabled]="saving"
+                            class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-md hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                            {{ saving ? 'Saving...' : 'Save Changes' }}
+                        </button>
+                    </div>
+                </div>
+            </ng-container>
+        </div>
+    </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div *ngIf="showPasswordModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    (click)="closePasswordModal()">
+    <div class="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-[reveal_0.3s_ease-out]"
+        (click)="$event.stopPropagation()">
+        <h3 class="text-xl font-black text-slate-900 mb-6">Change Password</h3>
+
+        <div *ngIf="passwordError"
+            class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm font-bold text-red-700">
+            {{ passwordError }}
+        </div>
+        <div *ngIf="passwordSuccess"
+            class="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-sm font-bold text-emerald-700">
+            {{ passwordSuccess }}
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Current
+                    Password</label>
+                <input [(ngModel)]="currentPassword" type="password"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="Enter current password" />
+            </div>
+            <div>
+                <label class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">New
+                    Password</label>
+                <input [(ngModel)]="newPassword" type="password"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="Enter new password" />
+            </div>
+            <div>
+                <label class="block text-[10px] uppercase font-bold text-slate-400 tracking-widest mb-2">Confirm New
+                    Password</label>
+                <input [(ngModel)]="confirmPassword" type="password"
+                    class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    placeholder="Confirm new password" />
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button (click)="closePasswordModal()"
+                    class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-all">
+                    Cancel
+                </button>
+                <button (click)="changePassword()" [disabled]="saving"
+                    class="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-md disabled:opacity-50">
+                    {{ saving ? 'Changing...' : 'Change Password' }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DELETE ACCOUNT MODAL -->
+<div *ngIf="showDeleteModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+    (click)="closeDeleteModal()">
+    <div class="bg-white rounded-3xl p-8 w-full max-w-md shadow-2xl animate-[reveal_0.3s_ease-out]"
+        (click)="$event.stopPropagation()">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </div>
+            <h3 class="text-xl font-black text-slate-900 mb-2">Delete Account</h3>
+            <p class="text-sm text-slate-500">This action cannot be undone. All your data including attendance records,
+                fee
+                records, and todos will be permanently deleted.</p>
+        </div>
+        <div class="flex space-x-3">
+            <button (click)="closeDeleteModal()"
+                class="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl transition-all">
+                Cancel
+            </button>
+            <button (click)="deleteAccount()" [disabled]="saving"
+                class="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-all shadow-md disabled:opacity-50">
+                {{ saving ? 'Deleting...' : 'Delete Account' }}
+            </button>
+        </div>
+    </div>
+</div>

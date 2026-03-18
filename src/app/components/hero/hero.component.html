@@ -1,0 +1,78 @@
+<section id="home" class="relative min-h-[90vh] md:h-screen flex items-center overflow-hidden bg-slate-900">
+    <!-- Cinematic Background -->
+    <div class="absolute inset-0 z-0">
+        <div class="absolute inset-0 bg-gradient-to-b from-slate-900/60 via-transparent to-slate-900/90 z-10"></div>
+        <div class="absolute inset-0 bg-blue-900/10 z-10"></div>
+        <div class="absolute inset-0 w-full h-full bg-cover bg-center animate-drift opacity-80"
+            style="background-image: url('https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&w=2000&q=80')">
+        </div>
+    </div>
+
+    <div class="container mx-auto px-6 py-20 md:py-0 relative z-20">
+        <div class="max-w-4xl">
+            <div
+                class="inline-flex items-center space-x-2 px-3 py-1.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full mb-6 md:mb-8 animate-[slideInRight_0.8s_ease-out]">
+                <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                <span class="text-white text-[9px] font-black uppercase tracking-[0.2em]">Excellence Reimagined</span>
+            </div>
+
+            <h1
+                class="text-4xl md:text-8xl font-serif text-white mb-6 md:mb-8 leading-[1.2] md:leading-[1.1] animate-[fadeIn_1s_ease-out]">
+                Leading the <span class="shimmer-text italic">Digital</span><br />
+                Education Era.
+            </h1>
+
+            <p
+                class="text-base md:text-2xl text-slate-300 mb-8 md:mb-12 max-w-2xl leading-relaxed opacity-90 animate-[fadeIn_1.2s_ease-out]">
+                Join 15,000+ students globally at the intersection of technology and academia. Your journey to mastery
+                starts here.
+            </p>
+
+            <div
+                class="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6 animate-[fadeIn_1.4s_ease-out]">
+                <button
+                    class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 md:px-10 md:py-5 rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all shadow-2xl shadow-blue-600/30 hover:-translate-y-1 active:scale-95">
+                    Explore Programs
+                </button>
+                <button
+                    class="w-full sm:w-auto group flex items-center justify-center space-x-3 text-white font-bold text-base md:text-lg hover:text-blue-400 transition-colors">
+                    <div
+                        class="w-10 h-10 md:w-12 md:h-12 rounded-full border border-white/30 flex items-center justify-center group-hover:border-blue-400 group-hover:bg-white/5 transition-all">
+                        <svg class="w-4 h-4 md:w-5 md:h-5 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                        </svg>
+                    </div>
+                    <span>Campus Tour</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Preview - Scaled for better density -->
+    <div class="absolute top-32 right-6 md:right-12 hidden lg:block z-30 animate-float">
+        <div class="relative group">
+            <div
+                class="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+            </div>
+
+            <div
+                class="dark-glass p-4 rounded-[1.5rem] flex items-center space-x-4 relative z-10 border border-white/10 hover:border-white/20 transition-colors">
+                <div class="flex -space-x-2">
+                    <img *ngFor="let i of avatars" [src]="'https://i.pravatar.cc/100?img=' + (i + 15)"
+                        class="w-8 h-8 rounded-full border-2 border-slate-800 shadow-lg" alt="Student Avatar" />
+                </div>
+                <div>
+                    <p class="text-white font-bold text-xs">150+ Companies</p>
+                    <p class="text-slate-400 text-[9px] uppercase tracking-wider font-semibold">Hiring graduates</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <div class="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce z-20">
+        <div class="w-4 h-7 border-2 border-white/20 rounded-full flex justify-center pt-1.5">
+            <div class="w-0.5 h-1 bg-white/60 rounded-full"></div>
+        </div>
+    </div>
+</section>

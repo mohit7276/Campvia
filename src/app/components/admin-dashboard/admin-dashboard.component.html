@@ -1,0 +1,1795 @@
+﻿<div class="flex flex-col min-h-screen bg-[#fafafb] relative overflow-hidden">
+    <!-- Toast Notification -->
+    <div *ngIf="toast.visible"
+        class="fixed top-6 right-6 z-[999] flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border transition-all duration-300 max-w-sm"
+        [ngClass]="toast.success ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-red-600 border-red-500 text-white'">
+        <svg *ngIf="toast.success" class="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        <svg *ngIf="!toast.success" class="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-5a1 1 0 112 0 1 1 0 01-2 0zm0-8a1 1 0 000 2v4a1 1 0 002 0V7a1 1 0 00-1-1z" clip-rule="evenodd"/>
+        </svg>
+        <span class="text-sm font-bold">{{ toast.message }}</span>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div *ngIf="isSidebarOpen" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] transition-opacity"
+        (click)="isSidebarOpen = false"></div>
+
+    <!-- Sidebar -->
+    <aside
+        class="fixed inset-y-0 left-0 z-[70] w-72 bg-[#0a0f1c] text-white transition-transform duration-500 transform flex flex-col shadow-2xl"
+        [ngClass]="isSidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+        <div class="h-full flex flex-col p-6">
+            <div class="flex items-center justify-between mb-12">
+                <div class="flex items-center space-x-3 cursor-pointer group" (click)="router.navigate(['/'])">
+                    <img src="/logo.png" alt="Campvia Logo"
+                        class="h-10 w-10 object-cover rounded-xl group-hover:scale-105 transition-transform" />
+                    <span class="text-xl font-black tracking-tighter">CAMPVIA <span class="text-blue-400 font-light">{{
+                            authService.currentUser()?.role === 'faculty' ? 'FACULTY' : 'ADMIN' }}</span></span>
+                </div>
+                <button type="button" (click)="isSidebarOpen = false"
+                    class="p-2 hover:bg-white/10 rounded-lg transition-colors" aria-label="Close sidebar">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <nav class="flex-1 space-y-2 overflow-y-auto pr-3 custom-scrollbar">
+                <ng-container *ngFor="let item of navItems">
+                    <button *ngIf="item.id !== 'fees' || authService.currentUser()?.role === 'admin'"
+                        (click)="navigateTo(item.id); isSidebarOpen = false"
+                        class="w-full flex items-center space-x-4 p-4 rounded-2xl transition-all group"
+                        [ngClass]="activeSection === item.id ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'">
+                        <svg class="w-6 h-6 shrink-0 transition-transform group-hover:scale-110" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" [attr.d]="item.icon" />
+                        </svg>
+                        <span class="text-sm font-bold truncate">{{ item.label }}</span>
+                    </button>
+                </ng-container>
+            </nav>
+
+            <div class="mt-auto pt-10 border-t border-white/5">
+                <button (click)="handleLogout()"
+                    class="w-full flex items-center space-x-4 p-4 rounded-2xl text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d="M15 3H5a2 2 0 00-2 2v14a2 2 0 002 2h10m7-7l-4-4m4 4l-4 4m4-4H9" />
+                    </svg>
+                    <span class="text-sm font-bold">Logout Dashboard</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-[#f4f7fa] relative transition-all duration-300">
+        <!-- Header -->
+        <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-6 py-4 shadow-sm">
+            <div class="container mx-auto flex items-center justify-between">
+                <div class="flex-1 flex justify-start items-center">
+                    <button type="button" (click)="toggleSidebar()"
+                        class="p-3 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                        aria-label="Open sidebar menu">
+                        <svg class="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <div
+                        class="block text-slate-900 font-extrabold text-xl lg:text-2xl tracking-tight leading-none px-4 flex-1 flex items-center my-auto h-full">
+                        {{ authService.currentUser()?.role === 'faculty' ? 'Faculty Portal' : 'Admin Portal' }} <span
+                            class="text-[10px] lg:text-xs uppercase ml-3 bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold tracking-widest align-middle">Live</span>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex justify-end items-center space-x-4">
+                    <div class="flex flex-col text-right cursor-pointer group hidden sm:flex">
+                        <span class="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">{{
+                            authService.currentUser()?.name || (authService.currentUser()?.role === 'faculty' ? 'Faculty Member' : 'System Admin') }}</span>
+                        <span class="text-[9px] uppercase font-bold text-blue-500 tracking-wider">Superuser •
+                            Active</span>
+                    </div>
+                    <!-- React uses img tag for avatar -->
+                    <div
+                        class="w-10 h-10 bg-[#0a0f1c] rounded-full border-2 border-white shadow-md flex justify-center items-center text-white cursor-pointer hover:scale-110 hover:rotate-3 transition-transform">
+                        <svg class="w-6 h-6 text-blue-400" fill="currentColor" stroke="none" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M12 11c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v3h16v-3c0-2.66-5.33-4-8-4z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-10 pb-24">
+            <div class="max-w-7xl mx-auto space-y-8 animate-[fadeIn_0.4s_ease-out]">
+
+                <app-dashboard-home
+                    *ngIf="activeSection === 'overview' && authService.currentUser()?.role === 'faculty'"
+                    [userTodos]="userTodos" (changeSection)="navigateTo($event)"></app-dashboard-home>
+
+                <!-- Overview Stats blocks -->
+                <div *ngIf="activeSection === 'overview' && authService.currentUser()?.role === 'admin'"
+                    class="space-y-6">
+
+                    <!-- Welcome Banner -->
+                    <div class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 rounded-2xl p-6 lg:p-8">
+                        <div class="absolute -right-10 -top-10 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                        <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
+                        <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div>
+                                <h2 class="text-2xl lg:text-3xl font-black text-white">Welcome back, Admin</h2>
+                                <p class="text-slate-400 text-sm mt-1">Here's what's happening across your campus today.</p>
+                            </div>
+                            <button (click)="loadStats()" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold uppercase tracking-widest px-4 py-2.5 rounded-xl border border-white/10 transition-all">
+                                <svg class="w-4 h-4" [class.animate-spin]="statsLoading" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading skeleton -->
+                    <div *ngIf="statsLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div *ngFor="let i of [1,2,3,4]" class="bg-white rounded-2xl p-5 border border-slate-100 animate-pulse">
+                            <div class="h-3 w-20 bg-slate-200 rounded mb-3"></div>
+                            <div class="h-8 w-16 bg-slate-200 rounded mb-2"></div>
+                            <div class="h-2 w-28 bg-slate-100 rounded"></div>
+                        </div>
+                    </div>
+
+                    <!-- Primary Stats Row -->
+                    <div *ngIf="!statsLoading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Total Students -->
+                        <div (click)="navigateTo('students')"
+                            class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Total Students</p>
+                                <div class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-black text-slate-900">{{ adminStats.counts.totalStudents }}</p>
+                            <p class="text-xs font-semibold text-slate-400 mt-1">{{ adminStats.counts.activeStudents }} active</p>
+                        </div>
+
+                        <!-- Total Faculty -->
+                        <div (click)="navigateTo('faculty')"
+                            class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Faculty Members</p>
+                                <div class="w-10 h-10 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center group-hover:bg-violet-600 group-hover:text-white transition-all">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-black text-slate-900">{{ adminStats.counts.totalFaculty }}</p>
+                            <p class="text-xs font-semibold text-slate-400 mt-1">{{ adminStats.counts.activeFaculty }} active</p>
+                        </div>
+
+                        <!-- Total Courses -->
+                        <div (click)="navigateTo('courses')"
+                            class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Courses</p>
+                                <div class="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-black text-slate-900">{{ adminStats.counts.totalCourses }}</p>
+                            <p class="text-xs font-semibold text-slate-400 mt-1">departments &amp; programs</p>
+                        </div>
+
+                        <!-- Contact Inquiries -->
+                        <div (click)="navigateTo('contact-inquiries')"
+                            class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group">
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Inquiries</p>
+                                <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-all">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                </div>
+                            </div>
+                            <p class="text-3xl font-black text-slate-900">{{ adminStats.counts.totalContacts }}</p>
+                            <p class="text-xs font-semibold mt-1" [ngClass]="adminStats.counts.unreadContacts > 0 ? 'text-red-500' : 'text-slate-400'">
+                                {{ adminStats.counts.unreadContacts }} unread
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Secondary Stats Row: Fees + Exams/Assignments -->
+                    <div *ngIf="!statsLoading" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <!-- Fee Collection Card -->
+                        <div (click)="navigateTo('fees')"
+                            class="lg:col-span-2 relative overflow-hidden bg-gradient-to-br from-indigo-600 to-blue-700 text-white rounded-2xl p-6 cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all group">
+                            <div class="absolute -right-6 -bottom-6 w-32 h-32 bg-white/5 rounded-full blur-2xl"></div>
+                            <div class="relative z-10">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div>
+                                        <p class="text-[10px] uppercase font-bold text-indigo-200 tracking-widest">Fee Collection Overview</p>
+                                        <p class="text-3xl font-black mt-1">{{ formatCurrency(adminStats.fees.paidAmount) }}</p>
+                                        <p class="text-xs text-indigo-200 mt-0.5">collected of {{ formatCurrency(adminStats.fees.totalAmount) }} total</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="w-16 h-16 rounded-full border-4 border-indigo-400/30 flex items-center justify-center">
+                                            <span class="text-lg font-black">{{ feeCollectionPercent }}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Progress bar -->
+                                <div class="w-full bg-white/20 rounded-full h-2 mb-3">
+                                    <div class="bg-white rounded-full h-2 transition-all duration-700" [style.width.%]="feeCollectionPercent"></div>
+                                </div>
+                                <div class="flex gap-6 text-xs">
+                                    <div>
+                                        <span class="text-indigo-200">Pending</span>
+                                        <p class="font-bold text-white">{{ formatCurrency(adminStats.fees.pendingAmount) }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-indigo-200">Overdue</span>
+                                        <p class="font-bold text-red-300">{{ formatCurrency(adminStats.fees.overdueAmount) }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-indigo-200">Records</span>
+                                        <p class="font-bold text-white">{{ adminStats.fees.totalRecords }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats Column -->
+                        <div class="grid grid-rows-2 gap-4">
+                            <div (click)="navigateTo('assignments')"
+                                class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group flex items-center gap-4">
+                                <div class="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center group-hover:bg-rose-600 group-hover:text-white transition-all shrink-0">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-black text-slate-900">{{ adminStats.counts.totalAssignments }}</p>
+                                    <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Assignments</p>
+                                </div>
+                            </div>
+                            <div (click)="navigateTo('upcoming-tests')"
+                                class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group flex items-center gap-4">
+                                <div class="w-12 h-12 bg-teal-50 text-teal-600 rounded-xl flex items-center justify-center group-hover:bg-teal-600 group-hover:text-white transition-all shrink-0">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                                </div>
+                                <div>
+                                    <p class="text-2xl font-black text-slate-900">{{ adminStats.counts.totalExams }}</p>
+                                    <p class="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Exams &amp; Tests</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Row: Recent Students + Notices + Contacts -->
+                    <div *ngIf="!statsLoading" class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+                        <!-- Recent Students -->
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                                <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">New Students</h3>
+                                <button (click)="navigateTo('students')" class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full hover:bg-indigo-100 transition-colors">View All</button>
+                            </div>
+                            <div class="space-y-3">
+                                <div *ngFor="let s of adminStats.recentStudents" class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                        {{ s.name?.charAt(0) || '?' }}
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-sm font-bold text-slate-800 truncate">{{ s.name }}</p>
+                                        <p class="text-[11px] text-slate-400 truncate">{{ s.course || s.email }}</p>
+                                    </div>
+                                    <span class="text-[10px] font-bold text-slate-400 whitespace-nowrap">{{ timeAgo(s.createdAt) }}</span>
+                                </div>
+                                <p *ngIf="adminStats.recentStudents.length === 0" class="text-sm text-slate-400 text-center py-4">No students yet</p>
+                            </div>
+                        </div>
+
+                        <!-- Recent Notices -->
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                                <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Latest Notices</h3>
+                                <button (click)="navigateTo('notices')" class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full hover:bg-indigo-100 transition-colors">View All</button>
+                            </div>
+                            <div class="space-y-3">
+                                <div *ngFor="let n of adminStats.recentNotices" class="flex items-start gap-3">
+                                    <div class="w-2 h-2 rounded-full mt-1.5 shrink-0"
+                                        [ngClass]="n.priority === 'high' ? 'bg-red-500' : (n.category === 'academic' ? 'bg-blue-500' : (n.category === 'event' ? 'bg-amber-500' : 'bg-emerald-500'))"></div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-sm font-bold text-slate-800 truncate">{{ n.title }}</p>
+                                        <div class="flex items-center gap-2 mt-0.5">
+                                            <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                                                [ngClass]="n.priority === 'high' ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-400'">
+                                                {{ n.category || 'general' }}
+                                            </span>
+                                            <span class="text-[10px] text-slate-400">{{ n.date }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p *ngIf="adminStats.recentNotices.length === 0" class="text-sm text-slate-400 text-center py-4">No notices yet</p>
+                            </div>
+                        </div>
+
+                        <!-- Recent Contact Inquiries -->
+                        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                            <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                                <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Inquiries</h3>
+                                <button (click)="navigateTo('contact-inquiries')" class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full hover:bg-indigo-100 transition-colors">View All</button>
+                            </div>
+                            <div class="space-y-3">
+                                <div *ngFor="let c of adminStats.recentContacts" class="flex items-start gap-3">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                                        [ngClass]="c.read ? 'bg-slate-100 text-slate-500' : 'bg-amber-50 text-amber-600'">
+                                        {{ c.name?.charAt(0) || '?' }}
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <p class="text-sm font-bold text-slate-800 truncate">{{ c.name }}</p>
+                                            <div *ngIf="!c.read" class="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></div>
+                                        </div>
+                                        <p class="text-[11px] text-slate-400 truncate">{{ c.message }}</p>
+                                    </div>
+                                    <span class="text-[10px] font-bold text-slate-400 whitespace-nowrap">{{ timeAgo(c.createdAt) }}</span>
+                                </div>
+                                <p *ngIf="adminStats.recentContacts.length === 0" class="text-sm text-slate-400 text-center py-4">No inquiries yet</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div *ngIf="!statsLoading" class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+                        <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider mb-4">Quick Actions</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            <button (click)="navigateTo('students'); openAddStudentModal()" class="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-blue-50 hover:text-blue-600 text-slate-600 transition-all group">
+                                <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Add Student</span>
+                            </button>
+                            <button (click)="navigateTo('faculty'); openAddFacultyModal()" class="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-violet-50 hover:text-violet-600 text-slate-600 transition-all group">
+                                <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Add Faculty</span>
+                            </button>
+                            <button (click)="navigateTo('courses'); openAddCourseModal()" class="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 transition-all group">
+                                <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Add Course</span>
+                            </button>
+                            <button (click)="navigateTo('notices')" class="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-amber-50 hover:text-amber-600 text-slate-600 transition-all group">
+                                <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Notices</span>
+                            </button>
+                            <button (click)="navigateTo('timetable')" class="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-teal-50 hover:text-teal-600 text-slate-600 transition-all group">
+                                <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Timetable</span>
+                            </button>
+                            <button *ngIf="authService.currentUser()?.role === 'admin'" (click)="navigateTo('fees')" class="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-rose-50 hover:text-rose-600 text-slate-600 transition-all group">
+                                <svg class="w-6 h-6 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                <span class="text-[10px] font-bold uppercase tracking-widest">Manage Fees</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Students Directory -->
+                <div *ngIf="activeSection === 'students'"
+                    class="bg-white p-8 lg:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 animate-[reveal_0.4s_ease-out]">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-900">Student Directory</h2>
+                            <p class="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1">Manage
+                                enrollments & profiles</p>
+                        </div>
+                        <div class="flex space-x-3 w-full md:w-auto">
+                            <div class="relative flex-1 md:w-64">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input type="text" [(ngModel)]="studentSearchQuery" placeholder="Search students..."
+                                    class="w-full bg-white border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block pl-10 p-2.5 outline-none transition-all placeholder-slate-400 font-semibold shadow-sm">
+                            </div>
+
+                            <button
+                                class="flex-1 md:flex-none py-2.5 px-5 bg-white border border-slate-200 shadow-sm rounded-xl font-bold text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                </svg>
+                                Filter
+                            </button>
+                            <button *ngIf="authService.currentUser()?.role === 'admin'" (click)="openAddStudentModal()"
+                                class="flex-1 md:flex-none py-2.5 px-6 bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 rounded-xl font-bold text-sm tracking-widest hover:bg-indigo-700 hover:-translate-y-0.5 transition-all text-center">
+                                + ADD NEW
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-100 rounded-[1.5rem]">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100">
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Email</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Student Name</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Course & Year</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Enrolled Date</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Fee Status</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Status</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr *ngFor="let student of filteredStudents"
+                                    class="hover:bg-slate-50/80 transition-colors group">
+                                    <td class="py-4 px-6 text-sm font-bold text-indigo-600 font-mono">{{ student.email }}</td>
+                                    <td class="py-4 px-6">
+                                        <div class="flex items-center space-x-3">
+                                            <div
+                                                class="w-8 h-8 rounded-full bg-slate-200 shrink-0 flex items-center justify-center font-bold text-slate-600 text-xs">
+                                                {{ student.name.charAt(0) }}</div>
+                                            <span class="font-bold text-slate-800">{{ student.name }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-bold text-slate-700">{{ student.course }}</span>
+                                            <span class="text-xs font-semibold text-slate-400">{{ student.year }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-6 text-sm font-bold text-slate-600">{{ student.date }}</td>
+                                    <td class="py-4 px-6">
+                                        <div class="flex items-center gap-1.5">
+                                            <div class="w-2 h-2 rounded-full"
+                                                [ngClass]="isStudentFeePaid(student) ? 'bg-emerald-500' : 'bg-red-500'"></div>
+                                            <span class="text-xs font-bold"
+                                                [ngClass]="isStudentFeePaid(student) ? 'text-emerald-700' : 'text-red-700'">
+                                                {{ isStudentFeePaid(student) ? 'Paid' : 'Pending' }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        <span
+                                            class="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full"
+                                            [ngClass]="student.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : (student.status === 'Inactive' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600')">
+                                            {{ student.status }}
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        <div
+                                            class="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button (click)="openViewStudentModal(student)"
+                                                class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                title="View Details">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </button>
+                                            <button *ngIf="authService.currentUser()?.role === 'admin'"
+                                                (click)="deleteStudent(student._id)"
+                                                class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr *ngIf="filteredStudents.length === 0">
+                                    <td colspan="7" class="py-12 text-center text-slate-500 font-bold">No students
+                                        found. Try adjusting your search query or add a new student.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Faculty Table -->
+                <div *ngIf="activeSection === 'faculty'"
+                    class="bg-white p-8 lg:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 animate-[reveal_0.4s_ease-out]">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-900">Faculty Database</h2>
+                            <p class="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1">Manage staff</p>
+                        </div>
+                        <div class="flex space-x-3 w-full md:w-auto">
+                            <div class="relative flex-1 md:w-64">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input type="text" [(ngModel)]="facultySearchQuery" placeholder="Search faculty..."
+                                    class="w-full bg-white border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block pl-10 p-2.5 outline-none transition-all placeholder-slate-400 font-semibold shadow-sm">
+                            </div>
+                            <button *ngIf="authService.currentUser()?.role === 'admin'" (click)="openAddFacultyModal()"
+                                class="flex-1 md:flex-none py-2.5 px-6 bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 rounded-xl font-bold text-sm tracking-widest hover:bg-indigo-700 hover:-translate-y-0.5 transition-all text-center w-full md:w-auto">
+                                + ADD FACULTY
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-100 rounded-[1.5rem]">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100">
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Email</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Faculty Name</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Department & Designation</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Joined</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Status</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr *ngFor="let member of filteredFaculty"
+                                    class="hover:bg-slate-50/80 transition-colors group">
+                                    <td class="py-4 px-6 text-sm font-bold text-indigo-600 font-mono">{{ member.email }}</td>
+                                    <td class="py-4 px-6">
+                                        <div class="flex items-center space-x-3">
+                                            <div
+                                                class="w-8 h-8 rounded-full bg-slate-800 shrink-0 flex items-center justify-center font-bold text-white text-xs">
+                                                {{ member.name.charAt(4) }}</div>
+                                            <span class="font-bold text-slate-800">{{ member.name }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        <div class="flex flex-col">
+                                            <span class="text-sm font-bold text-slate-700">{{ member.department
+                                                }}</span>
+                                            <span class="text-xs font-semibold text-slate-400">{{ member.designation }}</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-6 text-sm font-bold text-slate-600">{{ member.date }}</td>
+                                    <td class="py-4 px-6">
+                                        <span
+                                            class="px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-full"
+                                            [ngClass]="member.status === 'Active' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'">
+                                            {{ member.status }}
+                                        </span>
+                                    </td>
+                                    <td class="py-4 px-6">
+                                        <div
+                                            class="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button (click)="openViewFacultyModal(member)"
+                                                class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                title="View Details">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </button>
+                                            <button *ngIf="authService.currentUser()?.role === 'admin'"
+                                                (click)="deleteFaculty(member._id)"
+                                                class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr *ngIf="filteredFaculty.length === 0">
+                                    <td colspan="6" class="py-12 text-center text-slate-500 font-bold">No faculty
+                                        found. Try adjusting your search query or add a new faculty member.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Shared Admin Views -->
+                <app-admin-assignment-page *ngIf="activeSection === 'assignments'"></app-admin-assignment-page>
+
+                <app-admin-upcoming-tests-page
+                    *ngIf="activeSection === 'upcoming-tests'"></app-admin-upcoming-tests-page>
+                <app-admin-timetable-page *ngIf="activeSection === 'timetable'"></app-admin-timetable-page>
+                <app-notice-page *ngIf="activeSection === 'notices'"></app-notice-page>
+
+                <!-- Courses Database -->
+                <div *ngIf="activeSection === 'courses'"
+                    class="bg-white p-8 lg:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 animate-[reveal_0.4s_ease-out]">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-900">Departments & Courses</h2>
+                            <p class="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1">Manage academic
+                                offerings</p>
+                        </div>
+                        <div class="flex space-x-3 w-full md:w-auto">
+                            <div class="relative flex-1 md:w-64">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor"
+                                        viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <input type="text" [(ngModel)]="courseSearchQuery" placeholder="Search courses..."
+                                    class="w-full bg-white border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block pl-10 p-2.5 outline-none transition-all placeholder-slate-400 font-semibold shadow-sm">
+                            </div>
+                            <button *ngIf="authService.currentUser()?.role === 'admin'" (click)="openAddCourseModal()"
+                                class="flex-1 md:flex-none py-2.5 px-6 bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 rounded-xl font-bold text-sm tracking-widest hover:bg-indigo-700 hover:-translate-y-0.5 transition-all text-center w-full md:w-auto">
+                                + ADD COURSE
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto border border-slate-100 rounded-[1.5rem]">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100">
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        ID</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Course Name</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Dept. Head</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Total Fees</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                        Duration</th>
+                                    <th
+                                        class="py-4 px-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr *ngFor="let course of filteredCourses"
+                                    class="hover:bg-slate-50/80 transition-colors group">
+                                    <td class="py-4 px-6 text-sm font-bold text-indigo-600">{{ course.id }}</td>
+                                    <td class="py-4 px-6">
+                                        <div class="flex items-center space-x-3">
+                                            <div
+                                                class="w-8 h-8 rounded-full bg-indigo-100 shrink-0 flex items-center justify-center font-bold text-indigo-600 text-xs">
+                                                {{ course.name.charAt(0) }}</div>
+                                            <div class="flex flex-col">
+                                                <span class="font-bold text-slate-800">{{ course.name }}</span>
+                                                <span
+                                                    class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{
+                                                    course.type }}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-4 px-6 text-sm font-bold text-slate-700">{{ course.head }}</td>
+                                    <td class="py-4 px-6 text-sm font-bold text-slate-600">₹{{ course.totalFees | number:'1.0-0' }}</td>
+                                    <td class="py-4 px-6 text-sm font-bold text-slate-600">{{ course.duration }}</td>
+                                    <td class="py-4 px-6">
+                                        <div
+                                            class="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button (click)="openViewCourseModal(course)"
+                                                class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                title="View/Edit Details">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                            </button>
+                                            <button *ngIf="authService.currentUser()?.role === 'admin'"
+                                                (click)="deleteCourse(course.id)"
+                                                class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                    viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr *ngIf="filteredCourses.length === 0">
+                                    <td colspan="5" class="py-12 text-center text-slate-500 font-bold">No courses
+                                        found. Try adjusting your search query or add a new course.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div *ngIf="activeSection === 'contact-inquiries'"
+                    class="space-y-6 animate-[reveal_0.4s_ease-out]">
+                    <!-- Header -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-900">Contact Inquiries</h2>
+                            <p class="text-slate-500 text-sm mt-1">Messages submitted through the Contact Us form on the landing page.</p>
+                        </div>
+                        <div class="relative">
+                            <input type="text" [(ngModel)]="contactSearchQuery" placeholder="Search inquiries..."
+                                class="bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm w-64 outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+                            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div *ngIf="contactsLoading" class="flex justify-center py-16">
+                        <div class="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div *ngIf="!contactsLoading && filteredContacts.length === 0"
+                        class="bg-white rounded-2xl p-16 text-center border border-slate-100">
+                        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <p class="text-slate-500 font-bold">No inquiries found.</p>
+                    </div>
+
+                    <!-- Inquiries list -->
+                    <div *ngIf="!contactsLoading && filteredContacts.length > 0" class="space-y-4">
+                        <div *ngFor="let contact of filteredContacts"
+                            class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm transition-all hover:shadow-md"
+                            [ngClass]="contact.read ? 'opacity-70' : ''">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-3 mb-2 flex-wrap">
+                                        <span class="font-black text-slate-900 text-base">{{ contact.name }}</span>
+                                        <a [href]="'mailto:' + contact.email"
+                                            class="text-blue-600 text-sm font-medium hover:underline truncate">{{ contact.email }}</a>
+                                        <span *ngIf="!contact.read"
+                                            class="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest rounded-full">New</span>
+                                        <span *ngIf="contact.read"
+                                            class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest rounded-full">Read</span>
+                                    </div>
+                                    <p class="text-slate-600 text-sm leading-relaxed">{{ contact.message }}</p>
+                                    <p class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mt-3">
+                                        {{ contact.createdAt | date:'MMM d, y, h:mm a' }}
+                                    </p>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <button (click)="toggleContactRead(contact)"
+                                        class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border"
+                                        [ngClass]="contact.read
+                                            ? 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200'
+                                            : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'">
+                                        {{ contact.read ? 'Mark Unread' : 'Mark Read' }}
+                                    </button>
+                                    <button (click)="deleteContactInquiry(contact._id)"
+                                        class="p-2 rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all border border-transparent hover:border-red-200">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m4-3h2a1 1 0 011 1v1H8V5a1 1 0 011-1h2" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fee Management Section -->
+                <div *ngIf="activeSection === 'fees' && authService.currentUser()?.role === 'admin'"
+                    class="space-y-6 animate-[reveal_0.4s_ease-out]">
+                    <!-- Header -->
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-900">Fee Management</h2>
+                            <p class="text-slate-500 text-sm mt-1">Manage student fees by course. Students see these on their dashboard.</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="relative">
+                                <input type="text" [(ngModel)]="feeSearchQuery" placeholder="Search fees..."
+                                    class="bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm w-52 outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+                                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </div>
+                            <select [(ngModel)]="feeCourseFilter"
+                                class="bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all">
+                                <option value="">All Courses</option>
+                                <option *ngFor="let c of coursesList" [value]="c.id">{{ c.name }}</option>
+                            </select>
+                            <button (click)="openAddFeeModal()"
+                                class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 whitespace-nowrap">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                                Add Fee
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div *ngIf="feesLoading" class="flex justify-center py-16">
+                        <div class="w-8 h-8 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div *ngIf="!feesLoading && studentFeesSummary.length === 0"
+                        class="bg-white rounded-2xl p-16 text-center border border-slate-100">
+                        <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
+                        </div>
+                        <p class="text-slate-500 font-bold">No fee records found.</p>
+                        <p class="text-slate-400 text-sm mt-1">Fees are auto-generated from enrolled student course fees.</p>
+                    </div>
+
+                    <!-- Student Fee Cards -->
+                    <div *ngIf="!feesLoading && studentFeesSummary.length > 0" class="space-y-4">
+                        <div *ngFor="let entry of studentFeesSummary"
+                            class="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm transition-all">
+                            <!-- Student summary row -->
+                            <div class="flex flex-col md:flex-row md:items-center justify-between px-6 py-5 transition-colors gap-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+                                        {{ entry.studentName.charAt(0).toUpperCase() }}
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-slate-900 text-base">{{ entry.studentName }}</h3>
+                                        <p class="text-xs text-slate-500 mt-0.5">{{ entry.courseName }}
+                                            <span *ngIf="entry.fees.length > 0">&middot; {{ entry.fees.length }} fee record{{ entry.fees.length !== 1 ? 's' : '' }}</span>
+                                            <span *ngIf="entry.fees.length === 0" class="text-amber-500 font-semibold">&middot; No fee records</span>
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-5 md:gap-8">
+                                    <div class="text-center">
+                                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Total</p>
+                                        <p class="text-base font-black text-slate-800">₹{{ entry.totalAmount | number }}</p>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Paid</p>
+                                        <p class="text-base font-black text-emerald-600">₹{{ entry.paidAmount | number }}</p>
+                                    </div>
+                                    <div class="text-center">
+                                        <p class="text-[10px] font-bold uppercase tracking-widest" [ngClass]="entry.overdueAmount > 0 ? 'text-red-400' : 'text-amber-400'">Due</p>
+                                        <p class="text-base font-black" [ngClass]="entry.overdueAmount > 0 ? 'text-red-600' : 'text-amber-600'">
+                                            ₹{{ entry.remainingDue | number }}
+                                        </p>
+                                    </div>
+                                    <!-- Progress bar -->
+                                    <div class="w-24 hidden md:block">
+                                        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                                            <div class="h-full bg-emerald-500 rounded-full transition-all"
+                                                [style.width.%]="entry.totalAmount > 0 ? ((entry.paidAmount / entry.totalAmount) * 100 > 100 ? 100 : (entry.paidAmount / entry.totalAmount) * 100) : 0"></div>
+                                        </div>
+                                        <p class="text-[10px] text-slate-400 mt-1 text-center">{{ entry.totalAmount > 0 ? (((entry.paidAmount / entry.totalAmount) * 100 > 100 ? 100 : (entry.paidAmount / entry.totalAmount) * 100) | number:'1.0-0') : 0 }}% paid</p>
+                                    </div>
+                                    <!-- Manage fees toggle -->
+                                    <button
+                                        (click)="toggleFeeStudentExpand(entry.studentId)"
+                                        class="px-3 py-1.5 border text-xs font-bold rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5"
+                                        [ngClass]="expandedFeeStudentId === entry.studentId ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'">
+                                        <svg class="w-3.5 h-3.5 transition-transform" [class.rotate-180]="expandedFeeStudentId === entry.studentId" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/>
+                                        </svg>
+                                        Manage
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Expandable fee summary panel -->
+                            <div *ngIf="expandedFeeStudentId === entry.studentId"
+                                class="border-t border-slate-100 bg-slate-50/40 px-6 py-5">
+                                <div class="flex flex-col md:flex-row gap-4 items-start md:items-center">
+                                    <!-- Summary tiles -->
+                                    <div class="flex gap-3 flex-1 flex-wrap">
+                                        <div class="flex-1 min-w-[100px] bg-white border border-slate-100 rounded-2xl px-5 py-4 text-center shadow-sm">
+                                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total</p>
+                                            <p class="text-xl font-black text-slate-800">₹{{ entry.totalAmount | number }}</p>
+                                            <p class="text-[10px] text-slate-400 mt-0.5">{{ entry.fees.length }} record{{ entry.fees.length !== 1 ? 's' : '' }}</p>
+                                        </div>
+                                        <div class="flex-1 min-w-[100px] bg-emerald-50 border border-emerald-100 rounded-2xl px-5 py-4 text-center shadow-sm">
+                                            <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Paid</p>
+                                            <p class="text-xl font-black text-emerald-600">₹{{ entry.paidAmount | number }}</p>
+                                            <p class="text-[10px] text-emerald-400 mt-0.5">{{ feeCountByStatus(entry.fees, 'paid') }} paid</p>
+                                        </div>
+                                        <div class="flex-1 min-w-[100px] rounded-2xl px-5 py-4 text-center shadow-sm border"
+                                            [ngClass]="entry.overdueAmount > 0 ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'">
+                                            <p class="text-[10px] font-black uppercase tracking-widest mb-1"
+                                                [ngClass]="entry.overdueAmount > 0 ? 'text-red-500' : 'text-amber-500'">Due</p>
+                                            <p class="text-xl font-black"
+                                                [ngClass]="entry.overdueAmount > 0 ? 'text-red-600' : 'text-amber-600'">
+                                                ₹{{ entry.remainingDue | number }}
+                                            </p>
+                                            <p class="text-[10px] mt-0.5"
+                                                [ngClass]="entry.overdueAmount > 0 ? 'text-red-400' : 'text-amber-400'">
+                                                {{ feeCountByStatus(entry.fees, 'pending', 'overdue') }} unpaid
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <!-- Action buttons -->
+                                    <div class="flex flex-col gap-2 shrink-0">
+                                        <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-xl p-2">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                step="1"
+                                                [(ngModel)]="paidInputByStudent[entry.studentId]"
+                                                [ngModelOptions]="{ standalone: true }"
+                                                placeholder="Paid amount"
+                                                class="w-28 px-2 py-1.5 text-xs font-bold border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500" />
+                                            <button
+                                                (click)="addPaidAmountForStudent(entry)"
+                                                class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all whitespace-nowrap">
+                                                Add Paid
+                                            </button>
+                                        </div>
+                                        <button (click)="openAddFeeModal(entry.studentId)"
+                                            class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
+                                            Add Fee
+                                        </button>
+                                        <button (click)="openBulkFeeModal(entry)"
+                                            *ngIf="entry.fees.length > 0"
+                                            class="px-4 py-2.5 bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-200 text-slate-600 hover:text-blue-700 text-xs font-bold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                            Update Fees
+                                        </button>
+                                        <button (click)="deleteAllFeesForStudent(entry.studentId, entry.studentName)"
+                                            *ngIf="entry.fees.length > 0"
+                                            class="px-4 py-2.5 bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 text-slate-600 hover:text-red-700 text-xs font-bold rounded-xl transition-all flex items-center gap-2 whitespace-nowrap">
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m4-3h2a1 1 0 011 1v1H8V5a1 1 0 011-1h2"/></svg>
+                                            Delete All
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div *ngIf="activeSection === 'settings'"
+                    class="bg-white p-20 rounded-[2.5rem] shadow-sm border border-slate-100 animate-[reveal_0.4s_ease-out] text-center">
+                    <div
+                        class="w-24 h-24 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-800 mb-2">Module Under Construction</h2>
+                    <p class="text-slate-500 font-bold max-w-md mx-auto">This section is currently being developed and
+                        will be available in the upcoming system update.</p>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Student Modal (Add/Edit/View) -->
+    <div *ngIf="isStudentModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center">
+        <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" (click)="closeStudentModal()"></div>
+        <div
+            class="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-[reveal_0.3s_ease-out]">
+            <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                    <h3 class="text-xl font-black text-slate-900">
+                        {{ isViewingStudent ? 'Student Details' : (originalStudentId ? 'Edit Student Details' : 'Add New
+                        Student') }}
+                    </h3>
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+                        {{ isViewingStudent ? 'Full profile & credentials' : (originalStudentId ? 'Update profile &
+                        credentials' : 'Fill in the required information') }}
+                    </p>
+                </div>
+                <button (click)="closeStudentModal()"
+                    class="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-xl transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-8 overflow-y-auto custom-scrollbar flex-1">
+                <!-- Error / Success Alerts -->
+                <div *ngIf="saveError" class="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-xs font-bold text-red-600">{{ saveError }}</p>
+                </div>
+                <form class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Full
+                                Name</label>
+                            <input type="text" [(ngModel)]="currentStudent.name" name="name"
+                                [readonly]="isViewingStudent"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                                placeholder="e.g. John Doe">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Course</label>
+                            <select [(ngModel)]="currentStudent.courseId" name="courseId"
+                                [disabled]="isViewingStudent" (change)="onStudentCourseChange()"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all font-semibold">
+                                <option value="" disabled>Select a course</option>
+                                <option *ngFor="let course of coursesList" [value]="course.courseId || course.id">
+                                    {{ course.name }} ({{ course.courseId || course.id }})
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Year</label>
+                            <select [(ngModel)]="currentStudent.year" name="year" [disabled]="isViewingStudent"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all font-semibold">
+                                <option *ngFor="let yearOption of studentYearOptions" [value]="yearOption">{{ yearOption }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Status</label>
+                            <select [(ngModel)]="currentStudent.status" name="status" [disabled]="isViewingStudent"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all font-semibold">
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Graduating">Graduating</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Phone</label>
+                            <input type="text" [(ngModel)]="currentStudent.phone" name="phone"
+                                [readonly]="isViewingStudent"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                                placeholder="e.g. +1 (555) 123-4567">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Fees
+                                Status</label>
+                            <select [(ngModel)]="currentStudent.feesPaid" name="feesPaid" [disabled]="isViewingStudent"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all font-semibold"
+                                [ngClass]="currentStudent.feesPaid ? 'text-emerald-600' : 'text-red-600'">
+                                <option [ngValue]="true" class="text-emerald-600">Paid Dashboard Fees</option>
+                                <option [ngValue]="false" class="text-red-600">Pending Dashboard Fees</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Roll Number</label>
+                            <div class="flex gap-2 items-center">
+                                <input type="text" [(ngModel)]="currentStudent.rollNo" name="rollNo"
+                                    [readonly]="isViewingStudent"
+                                    (input)="onRollNoInput()"
+                                    class="flex-1 bg-slate-50 border text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold font-mono"
+                                    [ngClass]="{
+                                        'border-slate-200': rollNoCheckStatus === 'idle',
+                                        'border-emerald-400 bg-emerald-50': rollNoCheckStatus === 'available',
+                                        'border-red-400 bg-red-50': rollNoCheckStatus === 'taken',
+                                        'border-blue-300': rollNoCheckStatus === 'checking'
+                                    }"
+                                    placeholder="e.g. CS2024001">
+                                <button *ngIf="!isViewingStudent" type="button" (click)="verifyRollNo()"
+                                    [disabled]="rollNoCheckStatus === 'checking' || !currentStudent.rollNo?.trim()"
+                                    class="flex-shrink-0 flex items-center gap-1.5 px-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                                    [ngClass]="{
+                                        'bg-blue-600 hover:bg-blue-700 text-white': rollNoCheckStatus === 'idle' || rollNoCheckStatus === 'available',
+                                        'bg-slate-300 text-slate-500 cursor-not-allowed': rollNoCheckStatus === 'checking',
+                                        'bg-red-100 text-red-600 hover:bg-red-200': rollNoCheckStatus === 'taken',
+                                        'opacity-50 cursor-not-allowed': !currentStudent.rollNo?.trim()
+                                    }">
+                                    <ng-container *ngIf="rollNoCheckStatus === 'checking'">
+                                        <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                        </svg>
+                                        Checking
+                                    </ng-container>
+                                    <ng-container *ngIf="rollNoCheckStatus !== 'checking'">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Verify
+                                    </ng-container>
+                                </button>
+                            </div>
+                            <p *ngIf="rollNoCheckStatus === 'available'" class="text-[11px] text-emerald-600 font-bold mt-1.5 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+                                Roll number is available
+                            </p>
+                            <p *ngIf="rollNoCheckStatus === 'taken'" class="text-[11px] text-red-600 font-bold mt-1.5 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-5a1 1 0 112 0 1 1 0 01-2 0zm0-8a1 1 0 000 2v4a1 1 0 002 0V7a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+                                {{ rollNoCheckError }}
+                            </p>
+                            <p *ngIf="rollNoCheckStatus === 'idle'" class="text-[10px] text-slate-400 mt-1 font-semibold">Auto-filled when adding. Click Verify to check uniqueness.</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Address</label>
+                        <textarea [(ngModel)]="currentStudent.address" name="address" [readonly]="isViewingStudent"
+                            rows="2"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"></textarea>
+                    </div>
+
+                    <div *ngIf="authService.currentUser()?.role === 'admin'"
+                        class="bg-indigo-50/50 rounded-2xl p-5 border border-indigo-100 mt-6">
+                        <h4 class="text-sm font-black text-indigo-900 mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                                </path>
+                            </svg>
+                            Login Credentials
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label
+                                    class="block text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Login
+                                    Email</label>
+                                <input type="email" [(ngModel)]="currentStudent.email" name="email"
+                                    [readonly]="isViewingStudent"
+                                    class="w-full font-mono font-bold text-slate-800 bg-white px-3 py-2 rounded-lg border border-indigo-100 shadow-sm outline-none transition-all"
+                                    [class.focus:ring-2]="!isViewingStudent"
+                                    [class.focus:ring-indigo-500]="!isViewingStudent"
+                                    placeholder="e.g. john.doe@campvia.edu">
+                            </div>
+                            <div>
+                                <label
+                                    class="block text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Login
+                                    Password</label>
+                                <input type="text" [(ngModel)]="currentStudent.password" name="password"
+                                    [readonly]="isViewingStudent"
+                                    class="w-full font-mono font-bold text-slate-800 bg-white px-3 py-2 rounded-lg border border-indigo-100 shadow-sm outline-none transition-all"
+                                    [class.focus:ring-2]="!isViewingStudent"
+                                    [class.focus:ring-indigo-500]="!isViewingStudent"
+                                    placeholder="Set password">
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-indigo-400 mt-3 font-semibold">
+                            <span *ngIf="!originalStudentId">Student will use these credentials to log in to the portal.</span>
+                            <span *ngIf="originalStudentId">Leave password blank to keep existing password. Enter a new value to change it.</span>
+                        </p>
+                    </div>
+                </form>
+            </div>
+
+            <div class="px-8 py-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button type="button" (click)="closeStudentModal()"
+                    class="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-200 transition-colors">
+                    {{ isViewingStudent ? 'Close' : 'Cancel' }}
+                </button>
+                <button *ngIf="!isViewingStudent" type="button" (click)="saveStudent()"
+                    class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5">
+                    {{ currentStudent.id ? 'Save Changes' : 'Create Student' }}
+                </button>
+                <button *ngIf="isViewingStudent && authService.currentUser()?.role === 'admin'" type="button"
+                    (click)="isViewingStudent = false"
+                    class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                        </path>
+                    </svg>
+                    Edit Details
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Faculty Modal (Add/Edit/View) -->
+<div *ngIf="isFacultyModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" (click)="closeFacultyModal()"></div>
+    <div
+        class="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-[reveal_0.3s_ease-out]">
+        <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div>
+                <h3 class="text-xl font-black text-slate-900">
+                    {{ isViewingFaculty ? 'Faculty Details' : (originalFacultyId ? 'Edit Faculty Details' : 'Add New
+                    Faculty') }}
+                </h3>
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+                    {{ isViewingFaculty ? 'Full profile & credentials' : (originalFacultyId ? 'Update profile &
+                    credentials' : 'Fill in the required information') }}
+                </p>
+            </div>
+            <button (click)="closeFacultyModal()"
+                class="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-xl transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-8 overflow-y-auto custom-scrollbar flex-1">
+            <!-- Error / Success Alerts -->
+            <div *ngIf="saveError" class="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3">
+                <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-xs font-bold text-red-600">{{ saveError }}</p>
+            </div>
+            <form class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Full
+                            Name</label>
+                        <input type="text" [(ngModel)]="currentFaculty.name" name="name" [readonly]="isViewingFaculty"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                            placeholder="e.g. Dr. Alan Turing">
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Courses Taught</label>
+                        <div class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-48 overflow-y-auto custom-scrollbar">
+                            <p *ngIf="coursesList.length === 0" class="text-xs text-slate-400 font-semibold text-center py-3">No courses available</p>
+                            <label *ngFor="let course of coursesList"
+                                class="flex items-center gap-3 px-2 py-2 rounded-lg transition-colors cursor-pointer"
+                                [class.hover:bg-slate-100]="!isViewingFaculty"
+                                [class.opacity-60]="isViewingFaculty"
+                                [class.cursor-default]="isViewingFaculty">
+                                <input type="checkbox"
+                                    [value]="course.courseId || course.id"
+                                    [checked]="currentFaculty.courseIds?.includes(course.courseId || course.id)"
+                                    [disabled]="isViewingFaculty"
+                                    (change)="toggleFacultyCourse(course.courseId || course.id, $event)"
+                                    class="w-4 h-4 rounded accent-blue-600 cursor-pointer shrink-0">
+                                <span class="text-sm font-semibold text-slate-800">{{ course.name }}</span>
+                                <span class="ml-auto text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">{{ course.courseId || course.id }}</span>
+                            </label>
+                        </div>
+                        <p class="text-[10px] text-slate-400 font-semibold mt-1.5">
+                            {{ currentFaculty.courseIds?.length || 0 }} course(s) selected
+                        </p>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Designation</label>
+                        <select [(ngModel)]="currentFaculty.designation" name="designation" [disabled]="isViewingFaculty"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all font-semibold">
+                            <option value="HOD">HOD</option>
+                            <option value="Professor">Professor</option>
+                            <option value="Asst. Professor">Asst. Professor</option>
+                            <option value="Lecturer">Lecturer</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Status</label>
+                        <select [(ngModel)]="currentFaculty.status" name="status" [disabled]="isViewingFaculty"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all font-semibold">
+                            <option value="Active">Active</option>
+                            <option value="On Leave">On Leave</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Phone</label>
+                        <input type="text" [(ngModel)]="currentFaculty.phone" name="phone" [readonly]="isViewingFaculty"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                            placeholder="e.g. +1 (555) 123-4567">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Address</label>
+                    <textarea [(ngModel)]="currentFaculty.address" name="address" [readonly]="isViewingFaculty" rows="2"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"></textarea>
+                </div>
+
+                <div *ngIf="authService.currentUser()?.role === 'admin'"
+                    class="bg-indigo-50/50 rounded-2xl p-5 border border-indigo-100 mt-6">
+                    <h4 class="text-sm font-black text-indigo-900 mb-4 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                            </path>
+                        </svg>
+                        Login Credentials
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label
+                                class="block text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Login
+                                Email</label>
+                            <input type="email" [(ngModel)]="currentFaculty.email" name="email"
+                                [readonly]="isViewingFaculty"
+                                class="w-full font-mono font-bold text-slate-800 bg-white px-3 py-2 rounded-lg border border-indigo-100 shadow-sm outline-none transition-all"
+                                [class.focus:ring-2]="!isViewingFaculty"
+                                [class.focus:ring-indigo-500]="!isViewingFaculty"
+                                placeholder="e.g. faculty@campvia.edu">
+                        </div>
+                        <div>
+                            <label
+                                class="block text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Login
+                                Password</label>
+                            <input type="text" [(ngModel)]="currentFaculty.password" name="password"
+                                [readonly]="isViewingFaculty"
+                                class="w-full font-mono font-bold text-slate-800 bg-white px-3 py-2 rounded-lg border border-indigo-100 shadow-sm outline-none transition-all"
+                                [class.focus:ring-2]="!isViewingFaculty"
+                                [class.focus:ring-indigo-500]="!isViewingFaculty"
+                                placeholder="Set password">
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-indigo-400 mt-3 font-semibold">
+                        <span *ngIf="!originalFacultyId">Faculty will use these credentials to log in to the portal.</span>
+                        <span *ngIf="originalFacultyId">Leave password blank to keep existing password. Enter a new value to change it.</span>
+                    </p>
+                </div>
+            </form>
+        </div>
+
+        <div class="px-8 py-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+            <button type="button" (click)="closeFacultyModal()"
+                class="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-200 transition-colors">
+                {{ isViewingFaculty ? 'Close' : 'Cancel' }}
+            </button>
+            <button *ngIf="!isViewingFaculty" type="button" (click)="saveFaculty()"
+                class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5">
+                {{ currentFaculty.id ? 'Save Changes' : 'Create Faculty' }}
+            </button>
+            <button *ngIf="isViewingFaculty && authService.currentUser()?.role === 'admin'" type="button"
+                (click)="isViewingFaculty = false"
+                class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                    </path>
+                </svg>
+                Edit Details
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Fee Modal (Add/Edit) -->
+<div *ngIf="isFeeModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" (click)="closeFeeModal()"></div>
+    <div class="relative bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-[reveal_0.3s_ease-out]">
+        <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div>
+                <h3 class="text-xl font-black text-slate-900">{{ originalFeeId ? 'Edit Fee Record' : 'Add Fee Record' }}</h3>
+                <p class="text-slate-500 text-xs mt-0.5">This fee will appear on the student's dashboard.</p>
+            </div>
+            <button (click)="closeFeeModal()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+        <div class="overflow-y-auto p-8 space-y-5 flex-1">
+            <!-- Course -->
+            <div>
+                <label class="block text-xs font-black text-slate-700 uppercase tracking-widest mb-1.5">Course *</label>
+                <select [(ngModel)]="feeModalCourseId" (change)="onFeeModalCourseChange()"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all bg-white">
+                    <option value="">Select Course</option>
+                    <option *ngFor="let c of coursesList" [value]="c.id">{{ c.name }}</option>
+                </select>
+            </div>
+            <!-- Student (depends on course) -->
+            <div>
+                <label class="block text-xs font-black text-slate-700 uppercase tracking-widest mb-1.5">Student *</label>
+                <div *ngIf="feeModalStudentsLoading" class="flex items-center gap-2 py-3 px-4 text-sm text-slate-400">
+                    <div class="w-4 h-4 border-2 border-slate-200 border-t-emerald-500 rounded-full animate-spin"></div>
+                    Loading students...
+                </div>
+                <select *ngIf="!feeModalStudentsLoading" [(ngModel)]="currentFee.studentId" (change)="onFeeStudentChange()"
+                    [disabled]="!feeModalCourseId"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all bg-white disabled:bg-slate-50 disabled:text-slate-400">
+                    <option value="">{{ feeModalCourseId ? 'Select Student' : 'Select a course first' }}</option>
+                    <option *ngFor="let s of feeModalStudents" [value]="s._id || s.id">{{ s.name }}</option>
+                </select>
+            </div>
+            <!-- Title -->
+            <div>
+                <label class="block text-xs font-black text-slate-700 uppercase tracking-widest mb-1.5">Title *</label>
+                <input [(ngModel)]="currentFee.title" type="text" placeholder="e.g. Tuition Fee - Spring 2026"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+            </div>
+            <!-- Amount -->
+            <div>
+                <label class="block text-xs font-black text-slate-700 uppercase tracking-widest mb-1.5">Amount (₹) *</label>
+                <input [(ngModel)]="currentFee.amount" type="number" min="0" placeholder="e.g. 12000"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+            </div>
+            <!-- Due Date -->
+            <div>
+                <label class="block text-xs font-black text-slate-700 uppercase tracking-widest mb-1.5">Due Date *</label>
+                <input [(ngModel)]="currentFee.dueDate" type="date"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+            </div>
+            <!-- Row: Category + Semester -->
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-black text-slate-700 uppercase tracking-widest mb-1.5">Category</label>
+                    <select [(ngModel)]="currentFee.category"
+                        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all bg-white">
+                        <option value="Tuition">Tuition</option>
+                        <option value="Hostel">Hostel</option>
+                        <option value="Facilities">Facilities</option>
+                        <option value="Examination">Examination</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-black text-slate-700 uppercase tracking-widest mb-1.5">Semester</label>
+                    <input [(ngModel)]="currentFee.semester" type="text" placeholder="e.g. Spring 2026"
+                        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all" />
+                </div>
+            </div>
+            <!-- Status -->
+            <div>
+                <label class="block text-xs font-black text-slate-700 uppercase tracking-widest mb-1.5">Status</label>
+                <select [(ngModel)]="currentFee.status"
+                    class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all bg-white">
+                    <option value="pending">Pending</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="paid">Paid</option>
+                </select>
+            </div>
+            <!-- Error -->
+            <div *ngIf="feeSaveError" class="px-4 py-3 bg-red-50 text-red-600 rounded-xl text-sm font-bold border border-red-200">{{ feeSaveError }}</div>
+        </div>
+        <div class="px-8 py-5 border-t border-slate-100 flex justify-end gap-3 bg-slate-50/50">
+            <button (click)="closeFeeModal()" class="px-6 py-2.5 text-slate-600 font-bold text-sm rounded-xl border border-slate-200 hover:bg-slate-100 transition-all">Cancel</button>
+            <button (click)="saveFee()" [disabled]="feeSaving"
+                class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition-all disabled:opacity-60">
+                {{ feeSaving ? 'Saving...' : (originalFeeId ? 'Update Fee' : 'Create Fee') }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Fee Update Modal -->
+<div *ngIf="isBulkFeeModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" (click)="closeBulkFeeModal()"></div>
+    <div class="relative bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden animate-[reveal_0.3s_ease-out]">
+        <!-- Header -->
+        <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div>
+                <h3 class="text-xl font-black text-slate-900">Update Fees</h3>
+                <p class="text-slate-500 text-xs mt-0.5">{{ bulkFeeEntry?.studentName }}</p>
+            </div>
+            <button (click)="closeBulkFeeModal()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <!-- Summary -->
+        <div class="px-8 py-6 space-y-5">
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-slate-50 rounded-2xl p-4 text-center">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total</p>
+                    <p class="text-lg font-black text-slate-800">₹{{ bulkFeeEntry?.totalAmount | number }}</p>
+                    <p class="text-[10px] text-slate-400 mt-0.5">{{ bulkFeeEntry?.fees?.length }} records</p>
+                </div>
+                <div class="bg-emerald-50 rounded-2xl p-4 text-center">
+                    <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Paid</p>
+                    <p class="text-lg font-black text-emerald-600">₹{{ bulkFeeEntry?.paidAmount | number }}</p>
+                    <p class="text-[10px] text-emerald-400 mt-0.5">{{ feeCountByStatus(bulkFeeEntry?.fees || [], 'paid') }} paid</p>
+                </div>
+                <div class="rounded-2xl p-4 text-center"
+                    [ngClass]="(bulkFeeEntry?.overdueAmount || 0) > 0 ? 'bg-red-50' : 'bg-amber-50'">
+                    <p class="text-[10px] font-black uppercase tracking-widest mb-1"
+                        [ngClass]="(bulkFeeEntry?.overdueAmount || 0) > 0 ? 'text-red-500' : 'text-amber-500'">Pending</p>
+                    <p class="text-lg font-black"
+                        [ngClass]="(bulkFeeEntry?.overdueAmount || 0) > 0 ? 'text-red-600' : 'text-amber-600'">
+                        ₹{{ ((bulkFeeEntry?.pendingAmount || 0) + (bulkFeeEntry?.overdueAmount || 0)) | number }}
+                    </p>
+                    <p class="text-[10px] mt-0.5"
+                        [ngClass]="(bulkFeeEntry?.overdueAmount || 0) > 0 ? 'text-red-400' : 'text-amber-400'">
+                        {{ feeCountByStatus(bulkFeeEntry?.fees || [], 'pending', 'overdue') }} unpaid
+                    </p>
+                </div>
+            </div>
+
+            <!-- Action: mark all paid / mark all pending -->
+            <div class="space-y-3">
+                <p class="text-xs font-black text-slate-500 uppercase tracking-widest">Bulk Actions</p>
+                <button (click)="saveBulkFeeStatus('paid')" [disabled]="bulkFeeSaving"
+                    class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7"/></svg>
+                    {{ bulkFeeSaving ? 'Updating...' : 'Mark All Fees as Paid' }}
+                </button>
+                <button (click)="saveBulkFeeStatus('pending')" [disabled]="bulkFeeSaving"
+                    class="w-full py-3 bg-white border border-slate-200 hover:bg-amber-50 hover:border-amber-200 text-slate-700 hover:text-amber-700 font-bold rounded-2xl transition-all flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    {{ bulkFeeSaving ? 'Updating...' : 'Mark All Fees as Pending' }}
+                </button>
+            </div>
+
+            <p *ngIf="bulkFeeError" class="text-red-500 text-xs font-bold text-center">{{ bulkFeeError }}</p>
+        </div>
+    </div>
+</div>
+<div *ngIf="isCourseModalOpen" class="fixed inset-0 z-[100] flex items-center justify-center">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" (click)="closeCourseModal()"></div>
+    <div
+        class="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-[reveal_0.3s_ease-out]">
+        <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <div>
+                <h3 class="text-xl font-black text-slate-900">
+                    {{ isViewingCourse ? 'Course Details' : (originalCourseId ? 'Edit Course Details' : 'Add New
+                    Course') }}
+                </h3>
+                <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+                    {{ isViewingCourse ? 'Full scope & subjects' : (originalCourseId ? 'Update course parameters' :
+                    'Define course structure') }}
+                </p>
+            </div>
+            <button (click)="closeCourseModal()"
+                class="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-xl transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <div class="p-8 overflow-y-auto custom-scrollbar flex-1">
+            <form class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Course
+                            ID</label>
+                        <input type="text" [(ngModel)]="currentCourse.id" name="id" [readonly]="true"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-400 text-sm rounded-xl block p-3 outline-none font-semibold cursor-not-allowed"
+                            placeholder="Generated automatically">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Course
+                            Name</label>
+                        <input type="text" [(ngModel)]="currentCourse.name" name="name" [readonly]="isViewingCourse"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                            placeholder="e.g. Computer Science">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Department
+                            Head</label>
+                        <select *ngIf="!isViewingCourse" [(ngModel)]="currentCourse.head" name="head"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all font-semibold">
+                            <option value="">-- Select Faculty --</option>
+                            <option *ngFor="let f of faculty" [value]="f.name">{{ f.name }}</option>
+                        </select>
+                        <input *ngIf="isViewingCourse" type="text" [value]="currentCourse.head" name="head" [readonly]="true"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl block p-3 outline-none font-semibold cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Duration</label>
+                        <input type="text" [(ngModel)]="currentCourse.duration" name="duration"
+                            [readonly]="isViewingCourse"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                            placeholder="e.g. 4 Years">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Degree
+                            Type</label>
+                        <select [(ngModel)]="currentCourse.type" name="type" [disabled]="isViewingCourse"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all font-semibold">
+                            <option value="Undergraduate">Undergraduate</option>
+                            <option value="Postgraduate">Postgraduate</option>
+                            <option value="Diploma">Diploma</option>
+                            <option value="Certificate">Certificate</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Total Fees (₹)</label>
+                        <input type="number" [(ngModel)]="currentCourse.totalFees" name="totalFees"
+                            [readonly]="isViewingCourse"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                            placeholder="e.g. 24000">
+                    </div>
+                </div>
+
+                <div class="mt-6">
+                    <h4 class="text-sm font-black text-slate-900 mb-2 border-b border-slate-100 pb-2">Included Subjects
+                    </h4>
+
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <div *ngFor="let sub of currentCourse.subjects; let i = index"
+                            class="bg-indigo-50 border border-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 group transition-all">
+
+                            <span *ngIf="editSubjectIndex !== i">{{ sub }}</span>
+                            <input *ngIf="editSubjectIndex === i && !isViewingCourse" type="text"
+                                [(ngModel)]="editSubjectName" name="'editSubject' + i"
+                                (keyup.enter)="saveEditedSubject()"
+                                class="bg-white border border-indigo-200 rounded px-2 py-0.5 text-xs text-slate-800 outline-none w-24 focus:ring-1 focus:ring-indigo-500">
+
+                            <div class="flex gap-1" *ngIf="!isViewingCourse">
+                                <button *ngIf="editSubjectIndex !== i" type="button" (click)="startEditingSubject(i)"
+                                    class="text-indigo-400 hover:text-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                                        </path>
+                                    </svg>
+                                </button>
+                                <button *ngIf="editSubjectIndex === i" type="button" (click)="saveEditedSubject()"
+                                    class="text-emerald-500 hover:text-emerald-700">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                            d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                </button>
+                                <button type="button" *ngIf="editSubjectIndex !== i" (click)="removeSubject(i)"
+                                    class="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                                <button type="button" *ngIf="editSubjectIndex === i" (click)="cancelEditSubject()"
+                                    class="text-red-500 hover:text-red-700">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div *ngIf="currentCourse.subjects.length === 0"
+                            class="text-xs text-slate-400 font-bold italic w-full py-2">
+                            No subjects added to this course yet.
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 items-center mt-2" *ngIf="!isViewingCourse">
+                        <input type="text" [(ngModel)]="newSubjectName" name="newSubject" (keyup.enter)="addSubject()"
+                            class="flex-1 bg-white border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-2 outline-none transition-all placeholder-slate-400 font-semibold"
+                            placeholder="Add new subject...">
+                        <button type="button" (click)="addSubject()"
+                            class="px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded-xl font-bold text-sm transition-colors whitespace-nowrap">
+                            + Add
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ===== LANDING PAGE FIELDS ===== -->
+                <div class="border-t border-slate-100 pt-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="w-8 h-[2px] bg-blue-500"></span>
+                        <h4 class="text-xs font-black text-blue-600 uppercase tracking-widest">Landing Page Display</h4>
+                    </div>
+                    <p class="text-[11px] text-slate-400 font-medium mb-4 -mt-2">These fields control how this course appears on the public index page.</p>
+
+                    <!-- Image preview -->
+                    <div *ngIf="currentCourse.image && !adminPreviewError"
+                        class="w-full h-36 rounded-xl overflow-hidden bg-slate-100 mb-4 border border-slate-200">
+                        <img [src]="currentCourse.image" alt="Preview"
+                            class="w-full h-full object-cover"
+                            referrerpolicy="no-referrer"
+                            (error)="adminPreviewError = true" />
+                    </div>
+                    <div *ngIf="currentCourse.image && adminPreviewError"
+                        class="w-full h-36 rounded-xl bg-slate-50 mb-4 border border-dashed border-red-200 flex flex-col items-center justify-center gap-1">
+                        <svg class="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p class="text-[10px] text-slate-400 font-bold">Preview unavailable — URL may block embedding</p>
+                        <a [href]="currentCourse.image" target="_blank" rel="noopener"
+                            class="text-[10px] text-blue-500 underline font-bold">Open in new tab to verify ↗</a>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                                Display Title <span class="text-slate-300 normal-case font-medium tracking-normal">(defaults to Course Name)</span>
+                            </label>
+                            <input type="text" [(ngModel)]="currentCourse.title" name="landingTitle"
+                                [readonly]="isViewingCourse"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                                placeholder="e.g. Advanced Computer Science" />
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Category</label>
+                                <input type="text" [(ngModel)]="currentCourse.category" name="landingCategory"
+                                    [readonly]="isViewingCourse"
+                                    class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                                    placeholder="e.g. Engineering" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Rating (0–5)</label>
+                                <input type="number" [(ngModel)]="currentCourse.rating" name="landingRating"
+                                    min="0" max="5" step="0.1" [readonly]="isViewingCourse"
+                                    class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                                    placeholder="e.g. 4.8" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                                Cover Image URL
+                            </label>
+                            <input type="url" [(ngModel)]="currentCourse.image" name="landingImage"
+                                [readonly]="isViewingCourse"
+                                (ngModelChange)="onAdminImageUrlChange($event)"
+                                [ngClass]="adminImageUrlWarning ? 'ring-2 ring-amber-400' : ''"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                                placeholder="https://images.unsplash.com/..." />
+                            <!-- Google/Bing search page warning -->
+                            <div *ngIf="adminImageUrlWarning"
+                                class="mt-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                                <svg class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                                </svg>
+                                <p class="text-[10px] text-amber-700 font-bold leading-relaxed">{{ adminImageUrlWarning }}</p>
+                            </div>
+                            <p class="text-[10px] text-slate-400 mt-1">Paste a direct image URL ending in .jpg/.png/.webp. Leave blank to hide from index page. <a *ngIf="currentCourse.image && !adminImageUrlWarning" [href]="currentCourse.image" target="_blank" rel="noopener" class="text-blue-500 underline">Test URL ↗</a></p>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Short Description</label>
+                            <textarea [(ngModel)]="currentCourse.description" name="landingDescription"
+                                rows="2" [readonly]="isViewingCourse"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold resize-none"
+                                placeholder="Brief description shown on the index page..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="px-8 py-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+            <button type="button" (click)="closeCourseModal()"
+                class="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-200 transition-colors">
+                {{ isViewingCourse ? 'Close' : 'Cancel' }}
+            </button>
+            <button *ngIf="!isViewingCourse" type="button" (click)="saveCourse()"
+                class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5">
+                {{ originalCourseId ? 'Save Changes' : 'Create Course' }}
+            </button>
+            <button *ngIf="isViewingCourse && authService.currentUser()?.role === 'admin'" type="button"
+                (click)="isViewingCourse = false"
+                class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z">
+                    </path>
+                </svg>
+                Edit Details
+            </button>
+        </div>
+    </div>
+</div>

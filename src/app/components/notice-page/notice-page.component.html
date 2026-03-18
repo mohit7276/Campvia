@@ -1,0 +1,468 @@
+<div class="w-full space-y-8 pb-16">
+    <!-- Refined Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800 tracking-tight">University Notices</h2>
+            <p class="text-gray-400 font-medium text-sm">Stay updated with official department news</p>
+        </div>
+
+        <div class="relative w-full md:w-80">
+            <lucide-icon [img]="Search"
+                class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"></lucide-icon>
+            <input type="text" placeholder="Search updates..." [(ngModel)]="searchQuery"
+                (ngModelChange)="updateFilteredNotices()"
+                class="w-full pl-11 pr-4 py-3 bg-white border border-transparent focus:border-rose-100 focus:bg-white rounded-2xl outline-none transition-all shadow-sm text-sm font-medium" />
+        </div>
+    </div>
+
+    <!-- Compact Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" [@statsAnimation]>
+        <!-- Total Updates -->
+        <div class="glass-card rounded-2xl p-5 flex items-center gap-5 border-white/60 hover:shadow-md transition-all">
+            <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shadow-sm">
+                <lucide-icon [img]="Megaphone" class="w-4 h-4"></lucide-icon>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Updates
+                </p>
+                <p class="text-xl font-bold text-slate-800 tracking-tight">{{ stats.total }}</p>
+            </div>
+        </div>
+
+        <!-- Urgent -->
+        <div class="glass-card rounded-2xl p-5 flex items-center gap-5 border-white/60 hover:shadow-md transition-all">
+            <div class="w-11 h-11 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shadow-sm">
+                <lucide-icon [img]="AlertTriangle" class="w-4 h-4"></lucide-icon>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Urgent</p>
+                <p class="text-xl font-bold text-slate-800 tracking-tight">{{ stats.urgent }}</p>
+            </div>
+        </div>
+
+        <!-- New Today -->
+        <div class="glass-card rounded-2xl p-5 flex items-center gap-5 border-white/60 hover:shadow-md transition-all">
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shadow-sm">
+                <lucide-icon [img]="Info" class="w-4 h-4"></lucide-icon>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">New Today</p>
+                <p class="text-xl font-bold text-slate-800 tracking-tight">{{ stats.recent }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refined Toggle Switcher and Actions -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="inline-flex items-center p-1 bg-white rounded-xl border border-rose-50 shadow-sm">
+            <button (click)="handleViewChange('all')"
+                class="px-8 py-2 rounded-lg text-xs font-bold transition-all duration-200"
+                [ngClass]="activeView === 'all' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'">
+                General
+            </button>
+            <button (click)="handleViewChange('academic')"
+                class="px-8 py-2 rounded-lg text-xs font-bold transition-all duration-200"
+                [ngClass]="activeView === 'academic' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'">
+                Academic
+            </button>
+        </div>
+
+        <button *ngIf="authService.currentUser()?.role === 'admin'" (click)="openAddNoticeModal()"
+            class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 rounded-xl font-bold text-sm tracking-widest transition-all hover:-translate-y-0.5 whitespace-nowrap">
+            + ADD NOTICE
+        </button>
+    </div>
+
+    <!-- Main Content Grid - Tighter Cards -->
+    <div class="grid grid-cols-1 gap-4" [@listAnimation]="filteredNotices.length"
+        *ngIf="filteredNotices.length > 0; else emptyState">
+        <div *ngFor="let notice of filteredNotices" (click)="selectedNotice = notice"
+            class="glass-card rounded-2xl p-5 lg:p-6 border-white/50 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer group relative overflow-hidden">
+            <!-- Fixed Priority Badge Ribbon -->
+            <div *ngIf="notice.priority === 'high'"
+                class="absolute top-0 right-0 w-24 h-24 overflow-hidden pointer-events-none">
+                <div
+                    class="absolute top-[18px] right-[-24px] bg-rose-500 text-white text-[9px] font-black uppercase tracking-[0.1em] py-1 w-[120px] text-center rotate-45 shadow-sm">
+                    Urgent
+                </div>
+            </div>
+
+            <div class="flex items-start gap-6">
+                <div class="flex-shrink-0 hidden sm:block">
+                    <div class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
+                        [ngClass]="notice.role === 'admin' ? 'bg-slate-900 text-white' : 'bg-rose-50 text-rose-500'">
+                        <lucide-icon [img]="notice.role === 'admin' ? ShieldCheck : User" class="w-6 h-6"></lucide-icon>
+                    </div>
+                </div>
+
+                <div class="flex-1 space-y-3">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span
+                            class="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg border border-slate-100">
+                            <lucide-icon [img]="Calendar" class="w-3 h-3"></lucide-icon>
+                            {{ notice.date | date:'dd MMM' }}
+                        </span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-lg"
+                            [ngClass]="notice.category === 'academic' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'">
+                            {{ notice.category }}
+                        </span>
+                    </div>
+
+                    <h3
+                        class="text-lg font-bold text-slate-800 tracking-tight group-hover:text-rose-500 transition-colors">
+                        {{ notice.title }}
+                    </h3>
+
+                    <p class="text-slate-500 text-sm line-clamp-1 max-w-3xl">
+                        {{ notice.content }}
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-5 pt-1">
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                                <lucide-icon [img]="User" class="w-3 h-3"></lucide-icon>
+                            </div>
+                            <p class="text-xs font-semibold text-slate-600">{{ notice.sender }}</p>
+                        </div>
+
+                        <div *ngIf="notice.attachment || (notice.attachments && notice.attachments.length > 0)"
+                            class="flex items-center gap-1.5 text-rose-400 bg-rose-50/30 px-3 py-1 rounded-lg border border-rose-100/20">
+                            <lucide-icon [img]="FileText" class="w-3 h-3"></lucide-icon>
+                            <span class="text-[10px] font-bold uppercase tracking-widest">
+                                {{ (notice.attachments?.length || 0) > 0 ? ((notice.attachments?.length ?? 0) + ' attachment' + ((notice.attachments?.length ?? 0) > 1 ? 's' : '')) : notice.attachment }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-shrink-0 self-center">
+                    <button (click)="handleDownload(notice); $event.stopPropagation()"
+                        [disabled]="isDownloading === notice.id"
+                        class="w-11 h-11 rounded-xl flex items-center justify-center transition-all shadow-sm"
+                        [ngClass]="isDownloading === notice.id 
+              ? 'bg-slate-50 text-slate-300' 
+              : 'bg-white border border-slate-100 text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900'">
+                        <div *ngIf="isDownloading === notice.id"
+                            class="w-4 h-4 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin">
+                        </div>
+                        <lucide-icon *ngIf="isDownloading !== notice.id" [img]="ArrowDownToLine"
+                            class="w-4.5 h-4.5"></lucide-icon>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <ng-template #emptyState>
+        <div
+            class="py-24 flex flex-col items-center justify-center text-slate-400 bg-white/40 rounded-3xl border-2 border-dashed border-rose-100/50">
+            <lucide-icon [img]="Megaphone" class="w-10 h-10 text-slate-200 mb-6"></lucide-icon>
+            <p class="font-bold text-lg text-slate-600">No matching updates</p>
+            <button (click)="searchQuery=''; handleViewChange('all')"
+                class="mt-6 px-8 py-3 bg-white border border-slate-200 text-slate-800 rounded-xl text-xs font-bold uppercase hover:bg-slate-50 transition-all active:scale-95">
+                Reset Filters
+            </button>
+        </div>
+    </ng-template>
+
+    <!-- Detail Modal -->
+    <div *ngIf="selectedNotice" class="fixed inset-0 z-[100] flex items-center justify-center p-4" [@modalAnimation]>
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="selectedNotice = null"></div>
+        <div class="bg-white/95 backdrop-blur-md w-full max-w-xl rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] styled-scrollbar"
+            (click)="$event.stopPropagation()">
+            <button (click)="selectedNotice = null"
+                class="absolute top-4 right-4 text-slate-300 hover:text-slate-500 hover:bg-slate-100 p-2 rounded-xl transition-all z-20"
+                aria-label="Close modal">
+                <lucide-icon [img]="X" class="w-5 h-5"></lucide-icon>
+            </button>
+
+            <div class="p-6 lg:p-8 overflow-y-auto styled-scrollbar">
+                <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest"
+                            [ngClass]="selectedNotice.category === 'academic' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'">
+                            {{ selectedNotice.category }}
+                        </div>
+                        <div *ngIf="selectedNotice.priority === 'high'"
+                            class="px-3 py-1 rounded-lg bg-rose-50 text-rose-500 text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                            <lucide-icon [img]="AlertTriangle" class="w-2.5 h-2.5"></lucide-icon>
+                            Urgent
+                        </div>
+                    </div>
+
+                    <div *ngIf="authService.currentUser()?.role === 'admin'" class="flex items-center gap-2 sm:mr-8">
+                        <button (click)="openEditNoticeModal(selectedNotice); selectedNotice = null"
+                            class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold transition-colors">
+                            Edit
+                        </button>
+                        <button (click)="deleteNotice(selectedNotice.id); selectedNotice = null"
+                            class="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-bold transition-colors">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold text-slate-800 tracking-tight leading-tight mb-4">
+                    {{ selectedNotice.title }}
+                </h3>
+
+                <div class="flex flex-wrap items-center gap-6 mb-6 pb-6 border-b border-slate-50">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center shadow-sm">
+                            <lucide-icon [img]="User" class="w-4 h-4"></lucide-icon>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">
+                                Sender</p>
+                            <p class="text-sm font-bold text-slate-800">{{ selectedNotice.sender }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center border border-slate-100">
+                            <lucide-icon [img]="Calendar" class="w-4 h-4"></lucide-icon>
+                        </div>
+                        <div>
+                            <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">
+                                Posted</p>
+                            <p class="text-sm font-bold text-slate-800">
+                                {{ selectedNotice.date | date:'dd MMM yyyy' }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="prose prose-slate max-w-none mb-6">
+                    <p
+                        class="text-base font-medium text-slate-600 leading-relaxed border-l-4 border-rose-100 pl-4 italic">
+                        {{ selectedNotice.content }}
+                    </p>
+                </div>
+
+                <!-- Attachments Section -->
+                <div *ngIf="(selectedNotice.attachments && selectedNotice.attachments.length > 0) || selectedNotice.attachment"
+                    class="space-y-3">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Attachments</p>
+
+                    <!-- New attachments array -->
+                    <ng-container *ngIf="selectedNotice.attachments && selectedNotice.attachments.length > 0">
+                        <ng-container *ngFor="let att of selectedNotice.attachments">
+                            <!-- Image preview -->
+                            <div *ngIf="att.type === 'image'" class="rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+                                <img [src]="att.url" [alt]="att.name" class="w-full max-h-72 object-contain bg-slate-50">
+                                <div class="flex items-center justify-between px-4 py-2 bg-slate-50 border-t border-slate-100">
+                                    <span class="text-xs font-semibold text-slate-600 truncate max-w-xs">{{ att.name }}</span>
+                                    <a [href]="att.url" download [attr.download]="att.name" target="_blank"
+                                        class="flex items-center gap-2 bg-slate-900 text-white px-4 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-700 transition-all">
+                                        <lucide-icon [img]="Download" class="w-3.5 h-3.5"></lucide-icon>
+                                        Save
+                                    </a>
+                                </div>
+                            </div>
+                            <!-- Link -->
+                            <div *ngIf="att.type === 'link'"
+                                class="bg-blue-50 rounded-xl p-4 flex items-center justify-between gap-4 border border-blue-100">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-500 border border-blue-50 flex-shrink-0">
+                                        <lucide-icon [img]="Link" class="w-5 h-5"></lucide-icon>
+                                    </div>
+                                    <div class="overflow-hidden">
+                                        <p class="text-sm font-bold text-slate-800 truncate">{{ att.name }}</p>
+                                        <p class="text-[10px] text-blue-400 truncate">{{ att.url }}</p>
+                                    </div>
+                                </div>
+                                <a [href]="att.url" target="_blank" rel="noopener"
+                                    class="flex-shrink-0 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-blue-700 transition-all">
+                                    Open
+                                </a>
+                            </div>
+                            <!-- PDF / Doc / Other -->
+                            <div *ngIf="att.type !== 'image' && att.type !== 'link'"
+                                class="bg-slate-50 rounded-2xl p-4 flex items-center justify-between gap-4 border border-slate-100">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center border border-slate-50"
+                                        [ngClass]="getAttachmentIconColor(att.type)">
+                                        <lucide-icon [img]="getAttachmentIcon(att.type)" class="w-5 h-5"></lucide-icon>
+                                    </div>
+                                    <div class="overflow-hidden">
+                                        <p class="text-sm font-bold text-slate-800 truncate">{{ att.name }}</p>
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{{ att.type }}</p>
+                                    </div>
+                                </div>
+                                <a [href]="att.url" [attr.download]="att.name" target="_blank"
+                                    class="flex-shrink-0 flex items-center gap-3 bg-slate-900 text-white px-5 py-2.5 rounded-xl shadow-md hover:bg-slate-800 transition-all text-xs font-bold uppercase tracking-wider">
+                                    <lucide-icon [img]="Download" class="w-4 h-4"></lucide-icon>
+                                    Download
+                                </a>
+                            </div>
+                        </ng-container>
+                    </ng-container>
+
+                    <!-- Legacy single attachment fallback -->
+                    <div *ngIf="(!selectedNotice.attachments || selectedNotice.attachments.length === 0) && selectedNotice.attachment"
+                        class="bg-slate-50 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-100">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-rose-400 border border-slate-50">
+                                <lucide-icon [img]="FileText" class="w-5 h-5"></lucide-icon>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-slate-800">{{ selectedNotice.attachment }}</p>
+                            </div>
+                        </div>
+                        <button (click)="handleDownload(selectedNotice)" [disabled]="isDownloading === selectedNotice.id"
+                            class="flex items-center gap-3 bg-slate-900 text-white px-6 py-3 rounded-xl shadow-md hover:bg-slate-800 transition-all text-xs font-bold uppercase tracking-wider">
+                            <lucide-icon [img]="Download" class="w-4 h-4"></lucide-icon>
+                            Download PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-5 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2">
+                <lucide-icon [img]="ShieldCheck" class="w-4 h-4 text-emerald-500"></lucide-icon>
+                <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Verified Academic Notice</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Notice Modal (Add/Edit) -->
+    <div *ngIf="isManageModalOpen && currentManageNotice"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4" [@modalAnimation]>
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" (click)="closeManageModal()"></div>
+        <div class="bg-white/95 backdrop-blur-md w-full max-w-2xl rounded-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[85vh] styled-scrollbar"
+            (click)="$event.stopPropagation()">
+
+            <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                    <h3 class="text-xl font-black text-slate-900">
+                        {{ isEditingNotice ? 'Edit Notice' : 'Add New Notice' }}
+                    </h3>
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+                        {{ isEditingNotice ? 'Update announcement details' : 'Draft a new announcement' }}
+                    </p>
+                </div>
+                <button (click)="closeManageModal()"
+                    class="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-xl transition-colors">
+                    <lucide-icon [img]="X" class="w-5 h-5"></lucide-icon>
+                </button>
+            </div>
+
+            <div class="p-8 overflow-y-auto styled-scrollbar flex-1">
+                <form class="space-y-6">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Notice
+                            Title</label>
+                        <input type="text" [(ngModel)]="currentManageNotice.title" name="title"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                            placeholder="e.g. Mid-term Examination Schedule">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Category</label>
+                            <select [(ngModel)]="currentManageNotice.category" name="category"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 block p-3 outline-none transition-all font-semibold">
+                                <option value="academic">Academic</option>
+                                <option value="general">General</option>
+                                <option value="events">Events</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Priority</label>
+                            <select [(ngModel)]="currentManageNotice.priority" name="priority"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 block p-3 outline-none transition-all font-semibold">
+                                <option value="normal">Normal</option>
+                                <option value="high">High (Urgent)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Content</label>
+                        <textarea [(ngModel)]="currentManageNotice.content" name="content" rows="4"
+                            class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 block p-3 outline-none transition-all placeholder-slate-400 font-semibold"
+                            placeholder="Type the full notice details here..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Post
+                                Date</label>
+                            <input type="date" [(ngModel)]="currentManageNotice.date" name="date"
+                                class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 block p-3 outline-none transition-all font-semibold">
+                        </div>
+                    </div>
+
+                    <!-- Attachments Section -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Attachments</label>
+
+                        <!-- Upload file button -->
+                        <div class="relative group cursor-pointer h-[46px] mb-3">
+                            <input type="file" (change)="onFileSelected($event)"
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+                                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" [disabled]="uploadingFile">
+                            <div class="w-full h-full bg-slate-50 border-2 border-dashed border-slate-200 text-slate-400 text-sm rounded-xl"
+                                [class.opacity-60]="uploadingFile"
+                                [ngClass]="uploadingFile ? 'border-rose-300' : 'group-hover:bg-slate-100 group-hover:border-rose-400 group-hover:text-rose-500'"
+                                class="transition-all font-semibold flex items-center justify-center gap-2">
+                                <div *ngIf="uploadingFile" class="w-4 h-4 border-2 border-rose-300 border-t-rose-500 rounded-full animate-spin"></div>
+                                <lucide-icon *ngIf="!uploadingFile" [img]="Upload" class="w-4 h-4"></lucide-icon>
+                                <span>{{ uploadingFile ? 'Uploading...' : 'Upload image, PDF or document' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Add link row -->
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" [(ngModel)]="newLinkName" name="linkName" placeholder="Link label (optional)"
+                                class="w-32 bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl p-2.5 outline-none font-semibold placeholder-slate-400">
+                            <input type="url" [(ngModel)]="newLinkUrl" name="linkUrl" placeholder="Paste a URL..."
+                                class="flex-1 bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl p-2.5 outline-none font-semibold placeholder-slate-400">
+                            <button type="button" (click)="addLink()"
+                                [disabled]="!newLinkUrl.trim()"
+                                class="px-4 py-2 bg-blue-600 disabled:opacity-40 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all whitespace-nowrap">
+                                + Link
+                            </button>
+                        </div>
+
+                        <!-- Attachment list -->
+                        <div *ngIf="currentManageNotice.attachments && currentManageNotice.attachments.length > 0" class="space-y-2">
+                            <div *ngFor="let att of currentManageNotice.attachments; let i = index"
+                                class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                                <div [ngClass]="getAttachmentIconColor(att.type)" class="flex-shrink-0">
+                                    <lucide-icon [img]="getAttachmentIcon(att.type)" class="w-4 h-4"></lucide-icon>
+                                </div>
+                                <span class="flex-1 text-sm font-semibold text-slate-700 truncate">{{ att.name }}</span>
+                                <span class="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md"
+                                    [ngClass]="att.type === 'image' ? 'bg-purple-50 text-purple-500' : att.type === 'pdf' ? 'bg-rose-50 text-rose-500' : att.type === 'link' ? 'bg-blue-50 text-blue-500' : 'bg-indigo-50 text-indigo-500'">
+                                    {{ att.type }}
+                                </span>
+                                <button type="button" (click)="removeAttachmentItem(i)"
+                                    class="text-slate-400 hover:text-red-500 transition-colors p-1 rounded-lg hover:bg-red-50">
+                                    <lucide-icon [img]="X" class="w-4 h-4"></lucide-icon>
+                                </button>
+                            </div>
+                        </div>
+                        <p *ngIf="!currentManageNotice.attachments || currentManageNotice.attachments.length === 0"
+                            class="text-xs text-slate-400 font-medium">No attachments added yet.</p>
+                    </div>
+                </form>
+            </div>
+
+            <div class="px-8 py-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button type="button" (click)="closeManageModal()"
+                    class="px-6 py-2.5 rounded-xl font-bold text-sm text-slate-600 hover:bg-slate-200 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" (click)="saveNotice()"
+                    class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5">
+                    {{ isEditingNotice ? 'Save Changes' : 'Publish Notice' }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

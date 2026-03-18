@@ -1,0 +1,135 @@
+<div class="flex flex-col min-h-screen bg-[#fafafb] relative overflow-hidden">
+    <!-- Sidebar Overlay -->
+    <div *ngIf="isSidebarOpen" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] transition-opacity"
+        (click)="isSidebarOpen = false"></div>
+
+    <!-- Sidebar -->
+    <aside
+        class="fixed inset-y-0 left-0 z-[70] w-[85vw] max-w-72 bg-slate-900 text-white transition-transform duration-500 transform flex flex-col"
+        [ngClass]="isSidebarOpen ? 'translate-x-0' : '-translate-x-full'">
+        <div class="h-full flex flex-col p-6">
+            <div class="flex items-center justify-between mb-12">
+                <div class="flex items-center space-x-3 cursor-pointer group" (click)="handleBackToSite()">
+                    <img src="/logo.png" alt="Campvia Logo"
+                        class="h-10 w-10 object-cover rounded-xl group-hover:scale-105 transition-transform" />
+                    <span class="text-xl font-black tracking-tighter">CAMPVIA <span
+                            class="text-blue-500 font-light">HUB</span></span>
+                </div>
+                <button type="button" (click)="isSidebarOpen = false"
+                    class="p-2 hover:bg-white/10 rounded-lg transition-colors" aria-label="Close sidebar">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <nav class="flex-1 space-y-2 overflow-y-auto pr-3 custom-scrollbar">
+                <button *ngFor="let item of navItems" (click)="navigateTo(item.id); isSidebarOpen = false"
+                    class="w-full flex items-center space-x-4 p-4 rounded-2xl transition-all group"
+                    [ngClass]="activeSection === item.id ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'">
+                    <svg class="w-6 h-6 shrink-0 transition-transform group-hover:scale-110" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" [attr.d]="item.icon" />
+                    </svg>
+                    <span class="text-sm font-bold truncate">{{ item.label }}</span>
+                </button>
+            </nav>
+
+            <div class="mt-auto pt-10 border-t border-white/5">
+                <button (click)="handleLogout()"
+                    class="w-full flex items-center space-x-4 p-4 rounded-2xl text-slate-400 hover:bg-red-500/10 hover:text-red-500 transition-all">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d="M15 3H5a2 2 0 00-2 2v14a2 2 0 002 2h10m7-7l-4-4m4 4l-4 4m4-4H9" />
+                    </svg>
+                    <span class="text-sm font-bold">Logout</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-[#fafafb] relative transition-all duration-300">
+        <!-- Header -->
+        <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4">
+            <div class="container mx-auto flex items-center justify-between">
+                <div class="flex-1 flex justify-start">
+                    <button type="button" (click)="toggleSidebar()"
+                        class="p-2.5 sm:p-3 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                        aria-label="Open sidebar menu">
+                        <svg class="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex-1 flex flex-col items-center text-center">
+                    <h1 class="text-xl md:text-2xl font-black text-slate-900 tracking-tighter leading-none mb-1">CAMPVIA
+                        <span class="text-blue-600">HUB</span>
+                    </h1>
+                    <span
+                        class="text-[9px] md:text-[10px] uppercase font-bold text-slate-400 tracking-[0.3em] block ml-[0.3em]">Academic
+                        Dashboard</span>
+                </div>
+                <div class="flex-1 flex justify-end items-center space-x-3 sm:space-x-4">
+                    <div class="hidden sm:flex flex-col text-right cursor-pointer group"
+                        (click)="navigateTo('profile')">
+                        <span
+                            class="text-xs font-black text-slate-900 group-hover:text-blue-600 transition-colors">{{ authService.currentUser()?.name || 'Student' }}</span>
+                        <span class="text-[9px] uppercase font-bold text-blue-500 tracking-wider">
+                            <ng-container *ngIf="authService.currentUser()?.semester">Sem {{ authService.currentUser()?.semester }} • </ng-container>{{ authService.currentUser()?.status || 'Active' }}
+                        </span>
+                    </div>
+                    <ng-container *ngIf="authService.currentUser()?.avatar; else navInitials">
+                        <img [src]="authService.currentUser()?.avatar"
+                            class="w-10 h-10 rounded-full border-2 border-white shadow-md cursor-pointer hover:scale-110 hover:rotate-3 transition-transform object-cover"
+                            [alt]="authService.currentUser()?.name" (click)="navigateTo('profile')" />
+                    </ng-container>
+                    <ng-template #navInitials>
+                        <div (click)="navigateTo('profile')"
+                            class="w-10 h-10 rounded-full bg-blue-600 border-2 border-white shadow-md cursor-pointer hover:scale-110 transition-transform flex items-center justify-center text-white text-xs font-black">
+                            {{ (authService.currentUser()?.name || 'S').charAt(0).toUpperCase() }}
+                        </div>
+                    </ng-template>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-10 pb-20 sm:pb-24">
+            <div class="max-w-7xl mx-auto space-y-8 animate-[fadeIn_0.4s_ease-out]">
+
+                <!-- No Course Assigned Banner -->
+                <div *ngIf="noCourseAssigned && activeSection !== 'profile' && activeSection !== 'plans'"
+                    class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-start gap-3 sm:gap-4 shadow-sm mb-4">
+                    <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+                        <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-black text-amber-800 mb-1">No Course Assigned</h3>
+                        <p class="text-sm text-amber-700">You have not been assigned to any course yet. Please contact your administrator to get enrolled in a course. Once a course is assigned, you will be able to see your timetable, assignments, tests, scores, and other academic data.</p>
+                    </div>
+                </div>
+
+                <app-dashboard-home *ngIf="activeSection === 'home'" [userTodos]="userTodos"
+                    (changeSection)="navigateTo($event)"></app-dashboard-home>
+                <app-assignment-page *ngIf="activeSection === 'assignments'"></app-assignment-page>
+                <app-timetable-page *ngIf="activeSection === 'timetable'" [userTodos]="userTodos" [initialScanId]="initialScanId"></app-timetable-page>
+                <app-fees-page *ngIf="activeSection === 'fees'"></app-fees-page>
+                <app-upcoming-tests-page *ngIf="activeSection === 'upcoming-tests'"></app-upcoming-tests-page>
+                <app-notice-page *ngIf="activeSection === 'notices'"></app-notice-page>
+                <app-todo-list-page *ngIf="activeSection === 'plans'" [todos]="userTodos"
+                    (addTodo)="handleAddTodo($event)" (toggleTodo)="handleToggleTodo($event)"
+                    (deleteTodo)="handleDeleteTodo($event)"
+                    (updateTodo)="handleUpdateTodo($event)"></app-todo-list-page>
+                <app-classmates-page *ngIf="activeSection === 'classmates'"></app-classmates-page>
+                <app-faculty-page *ngIf="activeSection === 'faculty'"></app-faculty-page>
+
+                <app-profile-page *ngIf="activeSection === 'profile'"></app-profile-page>
+            </div>
+        </div>
+    </main>
+</div>

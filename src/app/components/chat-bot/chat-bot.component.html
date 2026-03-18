@@ -1,0 +1,121 @@
+<div *ngIf="isOpen"
+    class="fixed bottom-4 left-2 right-2 sm:bottom-24 sm:left-auto sm:right-8 w-auto sm:w-[95vw] md:w-[450px] h-[75vh] sm:h-[600px] max-h-[85vh] sm:max-h-[80vh] bg-white rounded-2xl sm:rounded-[2rem] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] z-50 flex flex-col overflow-hidden border border-slate-100 animate-[reveal_0.4s_ease-out]">
+    <div class="bg-slate-900 px-6 py-4 flex justify-between items-center relative overflow-hidden shrink-0">
+        <div
+            class="absolute top-0 right-0 w-48 h-48 bg-blue-600/20 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2">
+        </div>
+        <div class="flex items-center space-x-4 relative z-10">
+            <div class="relative group/logo">
+                <div
+                    class="w-11 h-11 bg-gradient-to-tr from-blue-600 via-blue-500 to-indigo-400 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-500/40 group-hover/logo:scale-110 transition-transform">
+                    <!-- Robot Face Icon -->
+                    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                        strokeLinecap="round" strokeLinejoin="round">
+                        <path
+                            d="M12 8V4m0 0H9m3 0h3M7 8h10a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2v-8a2 2 0 012-2z" />
+                        <circle cx="9" cy="13" r="1.5" class="fill-blue-200 animate-pulse" />
+                        <circle cx="15" cy="13" r="1.5" class="fill-blue-200 animate-pulse" />
+                        <path d="M10 17h4" strokeWidth="1.5" />
+                    </svg>
+                </div>
+                <div
+                    class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-slate-900 rounded-full shadow-sm">
+                </div>
+            </div>
+            <div>
+                <h3 class="text-white font-bold text-base leading-none mb-1 flex items-center">
+                    Campvia AI
+                    <span
+                        class="ml-2 px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-[8px] uppercase tracking-widest text-blue-300">Robot</span>
+                </h3>
+                <div class="flex items-center space-x-2">
+                    <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span>
+                    <span class="text-slate-400 text-[9px] uppercase font-black tracking-[0.2em]">Online Advisor</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3 relative z-10">
+            <button (click)="clearChat()"
+                class="text-slate-500 hover:text-white transition-colors p-1.5 hover:bg-white/10 rounded-lg"
+                title="Clear Chat">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+            <button (click)="close.emit()" class="text-slate-400 hover:text-white transition-all hover:rotate-90"
+                title="Close Chat">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-[#fdfdfd] custom-scrollbar">
+        <div *ngFor="let m of messages" class="flex flex-col animate-[reveal_0.3s_ease-out]"
+            [ngClass]="m.role === 'user' ? 'items-end' : 'items-start'">
+            <div class="max-w-[88%] p-4 rounded-2xl text-[13px] md:text-sm leading-relaxed shadow-sm transition-all whitespace-pre-wrap"
+                [ngClass]="m.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none ring-1 ring-slate-50'">
+                {{ m.text }}
+
+                <div *ngIf="m.sources && m.sources.length > 0" class="mt-4 pt-3 border-t border-slate-100">
+                    <p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mb-2">Sources Found</p>
+                    <div class="flex flex-wrap gap-2">
+                        <a *ngFor="let source of m.sources" [href]="source.uri" target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-[10px] px-2 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white transition-colors flex items-center space-x-1 max-w-[150px]">
+                            <span class="truncate">{{ source.title }}</span>
+                            <svg class="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"
+                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <span *ngIf="m.role === 'model'"
+                class="mt-2 ml-1 text-[9px] font-bold text-slate-300 uppercase tracking-[0.1em]">Verified
+                Intelligence</span>
+        </div>
+
+        <div *ngIf="isLoading" class="flex flex-col items-start animate-pulse">
+            <div class="bg-white px-5 py-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col space-y-3 w-4/5">
+                <div class="flex space-x-1.5">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-duration:0.6s]"></div>
+                    <div
+                        class="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-duration:0.6s] [animation-delay:0.1s]">
+                    </div>
+                    <div
+                        class="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-duration:0.6s] [animation-delay:0.2s]">
+                    </div>
+                </div>
+                <div class="h-2 bg-slate-100 rounded-full w-full"></div>
+                <div class="h-2 bg-slate-100 rounded-full w-2/3"></div>
+            </div>
+            <span class="mt-2 ml-1 text-[9px] font-bold text-blue-400 uppercase tracking-widest">Searching Global
+                Data...</span>
+        </div>
+        <div #messagesEnd></div>
+    </div>
+
+    <div class="p-6 bg-white border-t border-slate-100 relative z-10">
+        <form (submit)="handleSendMessage(); $event.preventDefault()" class="flex items-center space-x-3">
+            <div class="flex-1 relative">
+                <input type="text" [(ngModel)]="input" name="chatInput" placeholder="Ask anything, global or local..."
+                    class="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-600 focus:bg-white outline-none transition-all placeholder:text-slate-400 shadow-inner" />
+                <div *ngIf="input.length > 0 && !isLoading"
+                    class="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-blue-600 opacity-50 uppercase pointer-events-none">
+                    Press Enter</div>
+            </div>
+            <button type="submit" [disabled]="isLoading || !input.trim()"
+                class="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/30 hover:-translate-y-1 active:scale-95 shrink-0"
+                title="Send Message">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </button>
+        </form>
+        <p class="mt-3 text-[10px] text-center text-slate-400 font-medium">Powered by Gemini 3 Pro & Google Search</p>
+    </div>
+</div>

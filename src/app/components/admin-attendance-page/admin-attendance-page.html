@@ -1,0 +1,383 @@
+<div class="space-y-8 pb-20">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h2 class="text-3xl font-black text-slate-800 tracking-tight">Attendance Manager</h2>
+            <p class="text-slate-400 font-medium text-sm mt-1 uppercase tracking-widest">Manage records and class
+                information</p>
+        </div>
+
+        <div class="flex items-center space-x-3 w-full md:w-auto">
+            <div class="relative flex-1 md:flex-none">
+                <lucide-icon [img]="Search"
+                    class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></lucide-icon>
+                <input type="text" placeholder="Search lectures..." [(ngModel)]="searchQuery"
+                    class="pl-12 pr-4 py-3 bg-white border border-slate-200 focus:border-indigo-500 rounded-2xl outline-none w-full md:w-80 transition-all shadow-sm font-bold text-slate-700" />
+            </div>
+            <select [(ngModel)]="selectedCourseId"
+                class="py-3 px-4 bg-white border border-slate-200 rounded-2xl outline-none shadow-sm font-bold text-slate-700">
+                <option *ngFor="let course of coursesList" [value]="course.id">{{ course.name }}</option>
+            </select>
+            <button (click)="openAddLectureModal()"
+                class="flex items-center gap-2 px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-bold transition-transform hover:-translate-y-0.5 shadow-lg shadow-indigo-500/30 whitespace-nowrap">
+                <lucide-icon [img]="Plus" class="w-4 h-4"></lucide-icon> Add Lecture
+            </button>
+        </div>
+    </div>
+
+    <!-- Toggle Switcher -->
+    <div class="flex justify-start">
+        <div class="inline-flex items-center p-1 bg-white rounded-xl border border-slate-200 shadow-sm">
+            <button (click)="setViewMode('today')"
+                class="px-8 py-2 rounded-lg text-xs font-bold transition-all duration-200"
+                [ngClass]="viewMode === 'today' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'">
+                Today's Lectures
+            </button>
+            <button (click)="setViewMode('subject')"
+                class="px-8 py-2 rounded-lg text-xs font-bold transition-all duration-200"
+                [ngClass]="viewMode === 'subject' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'">
+                By Subject
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 min-h-[400px]" [@fadeAnimation]>
+
+        <!-- Subject Selection View -->
+        <ng-container *ngIf="viewMode === 'subject' && !selectedSubject">
+            <div class="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+                <h3 class="text-xl font-bold text-slate-800">Select Subject</h3>
+            </div>
+
+            <div *ngIf="availableSubjectsForFilter.length === 0"
+                class="text-center py-10 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                <p class="text-slate-500 font-bold">No subjects found for this course.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div *ngFor="let subject of availableSubjectsForFilter" (click)="selectSubject(subject)"
+                    class="border border-slate-100 bg-slate-50 rounded-2xl p-6 cursor-pointer group hover:bg-white hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <div
+                                class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                                <lucide-icon [img]="BookOpen" class="w-6 h-6"></lucide-icon>
+                            </div>
+                            <h4 class="text-lg font-bold text-slate-800 tracking-tight leading-tight">{{ subject }}</h4>
+                        </div>
+                        <button (click)="openSubjectQrModal(subject, $event)"
+                            class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 flex items-center justify-center transition-all shadow-sm shadow-indigo-500/5 hover:-translate-y-0.5"
+                            title="Generate Default Subject QR Code">
+                            <lucide-icon [img]="QrCode" class="w-4 h-4"></lucide-icon>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </ng-container>
+
+        <!-- Lectures List View (Today or Subject Detail) -->
+        <ng-container *ngIf="viewMode === 'today' || (viewMode === 'subject' && selectedSubject)">
+            <div
+                class="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-4">
+                    <button *ngIf="viewMode === 'subject'" (click)="selectedSubject = null"
+                        class="flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+                        <lucide-icon [img]="ChevronLeft" class="w-5 h-5"></lucide-icon>
+                    </button>
+                    <div>
+                        <h3 class="text-xl font-bold text-slate-800">{{ viewMode === 'today' ? 'Today\'s Lectures' :
+                            selectedSubject }}</h3>
+                        <p *ngIf="viewMode === 'today'"
+                            class="text-gray-400 font-bold uppercase text-[9px] tracking-widest leading-none mt-1">
+                            {{ this.todayStr | date:'longDate' }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div *ngIf="filteredLectures.length === 0"
+                class="text-center py-10 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+                <lucide-icon [img]="Calendar" class="w-10 h-10 text-slate-300 mx-auto mb-3"></lucide-icon>
+                <p class="text-slate-500 font-bold">No lectures found.</p>
+            </div>
+
+            <div *ngIf="filteredLectures.length > 0" class="space-y-4">
+                <div *ngFor="let lecture of filteredLectures" (click)="openAttendanceModal(lecture)"
+                    class="flex flex-col lg:flex-row lg:items-center justify-between p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:bg-white hover:shadow-xl transition-all cursor-pointer group">
+                    <div class="flex items-center gap-6">
+                        <div
+                            class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center shadow-sm">
+                            <lucide-icon [img]="Clock" class="w-6 h-6"></lucide-icon>
+                        </div>
+                        <div>
+                            <p class="font-bold text-lg text-slate-800 tracking-tight leading-none mb-2">{{
+                                lecture.subject }}</p>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <span
+                                    class="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                    <lucide-icon [img]="Calendar" class="w-3.5 h-3.5"></lucide-icon>
+                                    {{ lecture.date | date:'dd MMM yyyy' }}
+                                </span>
+                                <span class="text-slate-300">•</span>
+                                <span
+                                    class="flex items-center gap-1.5 text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
+                                    <lucide-icon [img]="Clock" class="w-3.5 h-3.5"></lucide-icon>
+                                    {{ lecture.time }}
+                                </span>
+                                <span class="text-slate-300">•</span>
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                    {{ lecture.instructor }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        class="mt-4 lg:mt-0 flex items-center gap-6 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 border-slate-200 pt-4 lg:pt-0">
+                        <div class="flex items-center gap-4 text-xs font-bold">
+                            <div
+                                class="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-100/50">
+                                <lucide-icon [img]="CheckCircle" class="w-4 h-4"></lucide-icon>
+                                <span>{{ getLectureAttendanceStats(lecture).present }} Present</span>
+                            </div>
+                            <div
+                                class="flex items-center gap-2 text-rose-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100/50">
+                                <lucide-icon [img]="XCircle" class="w-4 h-4"></lucide-icon>
+                                <span>{{ getLectureAttendanceStats(lecture).absent }} Absent</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button (click)="openQrModal(lecture, $event)"
+                                class="w-10 h-10 rounded-xl bg-slate-100 text-indigo-600 hover:bg-indigo-50 flex items-center justify-center transition-all shadow-sm"
+                                title="Share QR Code">
+                                <lucide-icon [img]="QrCode" class="w-4 h-4"></lucide-icon>
+                            </button>
+                            <button (click)="openEditLectureModal(lecture, $event)"
+                                class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-amber-50 hover:text-amber-600 flex items-center justify-center transition-all shadow-sm"
+                                title="Edit Lecture Details">
+                                <lucide-icon [img]="Edit2" class="w-4 h-4"></lucide-icon>
+                            </button>
+                            <button (click)="deleteLecture(lecture.id, $event)"
+                                class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 hover:bg-rose-50 hover:text-rose-600 flex items-center justify-center transition-all shadow-sm"
+                                title="Delete Lecture">
+                                <lucide-icon [img]="Trash2" class="w-4 h-4"></lucide-icon>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </ng-container>
+    </div>
+</div>
+
+<!-- Add/Edit Lecture Modal -->
+<div *ngIf="isLectureModalOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" (click)="closeLectureModal()"></div>
+    <div class="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]"
+        [@modalAnimation]>
+        <div class="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+            <div>
+                <h3 class="text-xl font-black text-slate-900">{{ isEditing ? 'Edit Lecture' : 'Create Lecture'
+                    }}</h3>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Configure Details
+                </p>
+            </div>
+            <button (click)="closeLectureModal()"
+                class="text-slate-400 hover:text-slate-600 p-2 rounded-xl transition-colors">
+                <lucide-icon [img]="XCircle" class="w-6 h-6"></lucide-icon>
+            </button>
+        </div>
+
+        <div class="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+            <div>
+                <label
+                    class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Subject</label>
+                <select [(ngModel)]="formSubject"
+                    class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 outline-none transition-all font-semibold">
+                    <option *ngFor="let s of availableSubjects" [value]="s">{{ s }}</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label
+                        class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Instructor</label>
+                    <input type="text" [(ngModel)]="formInstructor"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 outline-none transition-all font-semibold"
+                        placeholder="e.g. Dr. John Nash">
+                </div>
+                <div>
+                    <label
+                        class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Date</label>
+                    <input type="date" [(ngModel)]="formDate"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 outline-none transition-all font-semibold">
+                </div>
+            </div>
+            <div>
+                <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Time</label>
+                <input type="text" [(ngModel)]="formTime"
+                    class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 outline-none transition-all font-semibold"
+                    placeholder="e.g. 10:00 AM">
+            </div>
+        </div>
+
+        <div class="px-8 py-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+            <button (click)="closeLectureModal()"
+                class="px-6 py-2.5 text-slate-600 font-bold text-sm hover:bg-slate-200 rounded-xl transition-colors">Cancel</button>
+            <button (click)="saveLecture()"
+                class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 rounded-xl font-bold text-sm transition-transform hover:-translate-y-0.5">
+                {{ isEditing ? 'Save Changes' : 'Create Lecture' }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Attendance Register Modal -->
+<div *ngIf="isAttendanceModalOpen && editingLecture" class="fixed inset-0 z-[110] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" (click)="closeAttendanceModal()"></div>
+    <div class="bg-white w-full max-w-4xl rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]"
+        [@modalAnimation]>
+        <div class="px-8 py-6 border-b border-slate-100 flex justify-between items-center bg-indigo-600 text-white">
+            <div class="pr-6">
+                <div class="flex items-center gap-3">
+                    <h3 class="text-xl font-black mb-1 truncate">{{ editingLecture.subject }}</h3>
+                    <span
+                        class="px-2 py-0.5 bg-indigo-500/50 text-white rounded-md text-[10px] font-bold uppercase tracking-wider border border-indigo-400">Attendance</span>
+                </div>
+                <p class="text-xs font-bold text-indigo-200 uppercase tracking-widest">{{ editingLecture.instructor }} •
+                    {{ editingLecture.date | date:'longDate' }} at {{ editingLecture.time }}</p>
+            </div>
+            <button (click)="closeAttendanceModal()" class="text-indigo-200 hover:text-white p-2 transition-colors">
+                <lucide-icon [img]="XCircle" class="w-6 h-6"></lucide-icon>
+            </button>
+        </div>
+
+        <div class="p-8 overflow-y-auto custom-scrollbar flex-1 bg-slate-50">
+            <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 bg-white flex justify-between items-center">
+                    <div class="flex items-center gap-4">
+                        <h4 class="text-sm font-black text-slate-800 uppercase tracking-wider">Student Log</h4>
+                        <span class="text-xs font-semibold text-slate-400">{{ editingLecture.attendance.length }} students</span>
+                    </div>
+                </div>
+                <div *ngIf="loadingAttendance" class="flex items-center justify-center py-12">
+                    <div class="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                </div>
+                <ul *ngIf="!loadingAttendance" class="divide-y divide-slate-100">
+                    <li *ngFor="let result of editingLecture.attendance; let i = index"
+                        class="flex flex-col sm:flex-row sm:items-center justify-between p-6 hover:bg-slate-50 transition-colors group gap-4 sm:gap-0">
+                        <div class="flex items-center gap-4 flex-1">
+                            <div
+                                class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm bg-slate-100 text-slate-700 shrink-0">
+                                {{ result.studentName ? result.studentName.charAt(0) : '?' }}
+                            </div>
+                            <div class="flex-1 max-w-sm">
+                                <p class="text-sm font-bold text-slate-800">{{ result.studentName }}</p>
+                                <p class="text-xs font-semibold text-slate-400 mt-0.5">{{ result.studentId }}</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4 sm:ml-auto">
+                            <!-- Toggle Button for Present/Absent -->
+                            <button (click)="toggleStudentAttendance(result)"
+                                class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm w-28 justify-center"
+                                [ngClass]="result.status === 'present' ? 'bg-emerald-500 text-white shadow-emerald-500/30 font-black' : 'bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100'">
+                                <lucide-icon *ngIf="result.status === 'present'" [img]="CheckCircle"
+                                    class="w-4 h-4"></lucide-icon>
+                                <lucide-icon *ngIf="result.status === 'absent'" [img]="XCircle"
+                                    class="w-4 h-4"></lucide-icon>
+                                {{ result.status === 'present' ? 'Present' : 'Absent' }}
+                            </button>
+
+                            <button (click)="removeStudentFromLecture(i)"
+                                class="text-slate-400 hover:text-rose-500 p-2 transition-colors rounded-xl hover:bg-rose-50"
+                                title="Remove Student">
+                                <lucide-icon [img]="Trash2" class="w-4 h-4"></lucide-icon>
+                            </button>
+                        </div>
+                    </li>
+                    <li *ngIf="editingLecture.attendance.length === 0"
+                        class="p-6 text-center text-slate-400 font-bold text-sm">
+                        No students logged for this session.
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="px-8 py-5 bg-white border-t border-slate-100 flex justify-end gap-3">
+            <button (click)="closeAttendanceModal()"
+                class="px-6 py-2.5 text-slate-600 font-bold text-sm hover:bg-slate-100 rounded-xl transition-colors">Close
+                Log</button>
+        </div>
+    </div>
+</div>
+
+<!-- QR Code Modal -->
+<div *ngIf="isQrModalOpen && currentQrLecture" class="fixed inset-0 z-[120] flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-md" (click)="closeQrModal()"></div>
+    <div class="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col"
+        [@modalAnimation]>
+        <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-indigo-600 text-white">
+            <div>
+                <h3 class="text-lg font-black">{{ currentQrLecture.subject }}</h3>
+                <p class="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mt-0.5">Share Attendance QR
+                </p>
+            </div>
+            <button (click)="closeQrModal()" class="text-indigo-200 hover:text-white p-2 transition-colors">
+                <lucide-icon [img]="XCircle" class="w-6 h-6"></lucide-icon>
+            </button>
+        </div>
+
+        <div class="p-8 flex flex-col items-center justify-center bg-slate-50 min-h-[300px]">
+            <div *ngIf="qrStatus === 'generating'" class="flex flex-col items-center">
+                <div class="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-4">
+                </div>
+                <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Generating QR & Getting
+                    Location...</p>
+            </div>
+
+            <div *ngIf="qrStatus === 'ready'" class="flex flex-col items-center w-full">
+                <!-- Mock QR Code SVG -->
+                <div
+                    class="bg-white p-4 rounded-3xl shadow-sm border border-slate-200 mb-6 w-48 h-48 flex items-center justify-center">
+                    <svg viewBox="0 0 100 100" class="w-full h-full text-slate-800">
+                        <rect x="10" y="10" width="30" height="30" fill="none" stroke="currentColor" stroke-width="8">
+                        </rect>
+                        <rect x="60" y="10" width="30" height="30" fill="none" stroke="currentColor" stroke-width="8">
+                        </rect>
+                        <rect x="10" y="60" width="30" height="30" fill="none" stroke="currentColor" stroke-width="8">
+                        </rect>
+                        <rect x="25" y="25" width="8" height="8" fill="currentColor"></rect>
+                        <rect x="75" y="25" width="8" height="8" fill="currentColor"></rect>
+                        <rect x="25" y="75" width="8" height="8" fill="currentColor"></rect>
+                        <rect x="60" y="60" width="8" height="8" fill="currentColor"></rect>
+                        <rect x="70" y="70" width="20" height="20" fill="currentColor"></rect>
+                        <rect x="50" y="50" width="15" height="15" fill="currentColor"></rect>
+                        <rect x="85" y="55" width="5" height="15" fill="currentColor"></rect>
+                        <rect x="15" y="50" width="10" height="5" fill="currentColor"></rect>
+                    </svg>
+                </div>
+                <p class="text-slate-800 font-black text-center mb-2">Scan to mark attendance</p>
+                <div
+                    class="flex items-center gap-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                    <lucide-icon [img]="CheckCircle" class="w-3.5 h-3.5"></lucide-icon>
+                    Active for 50-meter radius of Campus
+                </div>
+            </div>
+
+            <div *ngIf="qrStatus === 'error'" class="flex flex-col items-center text-center">
+                <div class="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mb-4">
+                    <lucide-icon [img]="XCircle" class="w-8 h-8"></lucide-icon>
+                </div>
+                <p class="text-slate-800 font-bold mb-2">Could Not Generate</p>
+                <p class="text-xs text-rose-600 font-medium px-4">{{ qrErrorMessage }}</p>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 bg-white border-t border-slate-100 flex justify-end">
+            <button (click)="closeQrModal()"
+                class="w-full py-3 text-white bg-indigo-600 font-bold text-sm hover:bg-indigo-700 rounded-xl transition-colors shadow-lg shadow-indigo-500/30">
+                Done
+            </button>
+        </div>
+    </div>
+</div>

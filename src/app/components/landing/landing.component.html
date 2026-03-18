@@ -1,0 +1,67 @@
+<div class="relative min-h-screen bg-white">
+    <!-- Decorative Background Blobs -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div class="blob w-[500px] h-[500px] bg-blue-100/40 rounded-full top-[-10%] left-[-10%] animate-drift"></div>
+        <div
+            class="blob w-[600px] h-[600px] bg-indigo-50/50 rounded-full bottom-[-10%] right-[-10%] animate-drift [animation-delay:-5s]">
+        </div>
+        <div
+            class="blob w-[400px] h-[400px] bg-blue-50/60 rounded-full top-1/2 left-1/2 -translate-x-1/2 animate-drift [animation-delay:-10s]">
+        </div>
+    </div>
+
+    <!-- Scroll Progress Bar -->
+    <div class="fixed top-0 left-0 h-[3px] bg-gradient-to-r from-blue-600 to-indigo-600 z-[100] transition-all duration-150 shadow-[0_2px_10px_rgba(59,130,246,0.5)]"
+        [style.width.%]="scrollProgress"></div>
+
+    <app-navbar [scrolled]="scrolled" [isLoggedIn]="authService.isLoggedIn()"
+        [userRole]="authService.currentUser()?.role || 'student'" (authClick)="openAuth($event)"
+        (logout)="handleLogout()" (dashboardClick)="handleDashboardClick()"></app-navbar>
+
+    <app-hero></app-hero>
+    <app-stats></app-stats>
+    <app-about></app-about>
+    <app-courses></app-courses>
+    <app-contact></app-contact>
+    <app-footer></app-footer>
+
+    <app-auth-modal [isOpen]="authOpen" [initialMode]="authMode" (close)="closeAuth()"
+        (loginSuccess)="handleLoginSuccess($event)"></app-auth-modal>
+
+    <app-chat-bot [isOpen]="chatOpen" (close)="toggleChat()"></app-chat-bot>
+
+    <!-- Action Buttons Container -->
+    <div
+        class="fixed bottom-10 right-10 z-[9999] flex items-center bg-white border-2 border-slate-200 shadow-2xl rounded-2xl h-16 overflow-hidden pointer-events-auto">
+        <!-- AI Advisor Button -->
+        <button (click)="toggleChat()"
+            class="flex items-center justify-center w-16 h-full transition-all group relative"
+            [ngClass]="chatOpen ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 hover:bg-slate-50'"
+            title="AI Advisor">
+            <svg class="w-8 h-8 transition-all" [ngClass]="chatOpen ? 'scale-110' : 'group-hover:scale-125'"
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+                strokeLinejoin="round">
+                <path d="M12 8V4m0 0H9m3 0h3M7 8h10a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2v-8a2 2 0 012-2z" />
+                <circle cx="9" cy="13" r="1" [class]="chatOpen ? 'fill-white' : 'fill-blue-600'" />
+                <circle cx="15" cy="13" r="1" [class]="chatOpen ? 'fill-white' : 'fill-blue-600'" />
+                <path d="M10 17h4" strokeWidth="1.5" />
+            </svg>
+            <span *ngIf="chatOpen"
+                class="absolute top-0 right-0 w-3 h-3 bg-emerald-400 rounded-full m-3 animate-pulse"></span>
+        </button>
+
+        <!-- Divider and Back to Top Button -->
+        <div class="flex items-center h-full transition-all duration-500"
+            [ngClass]="scrolled ? 'w-16 opacity-100' : 'w-0 opacity-0 overflow-hidden'">
+            <div class="w-[1px] h-10 bg-slate-200"></div>
+            <button (click)="scrollToTop()"
+                class="flex items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 hover:bg-slate-50 transition-all group"
+                title="Back to Top">
+                <svg class="w-7 h-7 group-hover:-translate-y-1 transition-transform" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>

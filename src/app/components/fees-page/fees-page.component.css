@@ -1,0 +1,47 @@
+@media (max-width: 768px) {
+	:host {
+		display: block;
+	}
+
+	[class*='rounded-[2.5rem]'] {
+		border-radius: 1.25rem !important;
+	}
+
+	[class*='rounded-[2rem]'],
+	[class*='rounded-[1.75rem]'] {
+		border-radius: 1rem !important;
+	}
+
+	[class*='p-16'] {
+		padding: 1.5rem !important;
+	}
+
+	[class*='p-10'],
+	[class*='p-8'] {
+		padding: 1rem !important;
+	}
+
+	[class*='px-10'] {
+		padding-left: 1rem !important;
+		padding-right: 1rem !important;
+	}
+
+	[class*='py-10'] {
+		padding-top: 1.25rem !important;
+		padding-bottom: 1.25rem !important;
+	}
+
+	[class*='text-5xl'] {
+		font-size: 2rem !important;
+		line-height: 2.25rem !important;
+	}
+
+	[class*='text-3xl'] {
+		font-size: 1.5rem !important;
+		line-height: 2rem !important;
+	}
+
+	[class*='min-h-[380px]'] {
+		min-height: auto !important;
+	}
+}

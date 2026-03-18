@@ -1,0 +1,337 @@
+<div class="w-full space-y-8 pb-16">
+    <!-- Refined Header -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800 tracking-tight">Academic Attendance</h2>
+            <p class="text-gray-400 font-medium text-sm">Smart geo-fenced verification system</p>
+        </div>
+
+        <button (click)="handleStartScan()"
+            class="flex items-center gap-3 bg-slate-900 text-white px-7 py-3 rounded-2xl shadow-lg hover:bg-slate-800 transition-all active:scale-95 text-sm font-bold">
+            <lucide-icon [img]="QrCode" class="w-[18px] h-[18px]"></lucide-icon>
+            <span>Mark Attendance</span>
+        </button>
+    </div>
+
+    <!-- Compact Overview Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Term Rate -->
+        <div
+            class="glass-card rounded-2xl p-5 flex items-center gap-4 border-white/60 hover:shadow-md transition-all animate-[fadeInUp_0.3s_ease-out]">
+            <div class="w-11 h-11 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center shadow-sm">
+                <lucide-icon [img]="PieChart" class="w-[18px] h-[18px]"></lucide-icon>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Term Rate
+                </p>
+                <p class="text-xl font-bold text-slate-800 tracking-tight">{{ stats.rate }}%</p>
+            </div>
+        </div>
+        <!-- Present -->
+        <div
+            class="glass-card rounded-2xl p-5 flex items-center gap-4 border-white/60 hover:shadow-md transition-all animate-[fadeInUp_0.4s_ease-out]">
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-500 flex items-center justify-center shadow-sm">
+                <lucide-icon [img]="CheckCircle" class="w-[18px] h-[18px]"></lucide-icon>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Present</p>
+                <p class="text-xl font-bold text-slate-800 tracking-tight">{{ stats.present }}</p>
+            </div>
+        </div>
+        <!-- Absent -->
+        <div
+            class="glass-card rounded-2xl p-5 flex items-center gap-4 border-white/60 hover:shadow-md transition-all animate-[fadeInUp_0.5s_ease-out]">
+            <div class="w-11 h-11 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center shadow-sm">
+                <lucide-icon [img]="XCircle" class="w-[18px] h-[18px]"></lucide-icon>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Absent</p>
+                <p class="text-xl font-bold text-slate-800 tracking-tight">{{ stats.absent }}</p>
+            </div>
+        </div>
+        <!-- Streak -->
+        <div
+            class="glass-card rounded-2xl p-5 flex items-center gap-4 border-white/60 hover:shadow-md transition-all animate-[fadeInUp_0.6s_ease-out]">
+            <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shadow-sm">
+                <lucide-icon [img]="Clock" class="w-[18px] h-[18px]"></lucide-icon>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Streak</p>
+                <p class="text-xl font-bold text-slate-800 tracking-tight">{{ stats.streak }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Refined Toggle Switcher -->
+    <div class="flex justify-start">
+        <div class="inline-flex items-center p-1 bg-white rounded-xl border border-rose-50 shadow-sm">
+            <button (click)="setViewMode('today')"
+                class="px-8 py-2 rounded-lg text-xs font-bold transition-all duration-200"
+                [ngClass]="viewMode === 'today' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'">
+                Today
+            </button>
+            <button (click)="setViewMode('subject')"
+                class="px-8 py-2 rounded-lg text-xs font-bold transition-all duration-200"
+                [ngClass]="viewMode === 'subject' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'">
+                By Subject
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Container -->
+    <div class="min-h-[400px]">
+        <!-- Today View -->
+        <div *ngIf="viewMode === 'today'" @fadeIn class="glass-card rounded-2xl p-6 lg:p-8 border-white/50 shadow-sm">
+            <div class="flex items-center justify-between mb-8">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-11 h-11 bg-rose-50 rounded-xl text-rose-500 border border-rose-100 flex items-center justify-center">
+                        <lucide-icon [img]="Calendar" class="w-5 h-5"></lucide-icon>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800 tracking-tight">Today's Timeline</h3>
+                        <p class="text-gray-400 font-bold uppercase text-[9px] tracking-widest leading-none mt-1">
+                            {{ todayDateDisplay }}
+                        </p>
+                    </div>
+                </div>
+                <div
+                    class="hidden sm:flex items-center gap-2 text-emerald-500 bg-emerald-50 px-4 py-1.5 rounded-xl border border-emerald-100/30">
+                    <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span class="text-[9px] font-bold uppercase tracking-widest">Active Sync</span>
+                </div>
+            </div>
+
+            <div class="space-y-3">
+                <ng-container *ngIf="todaysRecords.length > 0; else noRecords">
+                    <div *ngFor="let record of todaysRecords" @fadeIn
+                        class="flex items-center justify-between p-4 rounded-xl bg-slate-50/50 border border-rose-50/50 hover:bg-white hover:shadow-md transition-all group">
+                        <div class="flex items-center gap-5">
+                            <div
+                                class="w-12 h-12 bg-white text-emerald-500 rounded-xl flex items-center justify-center shadow-sm">
+                                <lucide-icon [img]="CheckCircle" class="w-[22px] h-[22px]"></lucide-icon>
+                            </div>
+                            <div>
+                                <p class="font-bold text-base text-slate-800 tracking-tight leading-none mb-1">{{
+                                    record.subject }}</p>
+                                <div class="flex items-center gap-4">
+                                    <span
+                                        class="flex items-center gap-1.5 text-[9px] font-bold text-emerald-600 uppercase tracking-widest">
+                                        <lucide-icon [img]="Clock" class="w-[10px] h-[10px]"></lucide-icon>
+                                        {{ record.timestamp }}
+                                    </span>
+                                    <span
+                                        class="flex items-center gap-1.5 text-[9px] font-bold text-slate-300 uppercase tracking-widest">
+                                        <lucide-icon [img]="MapPin" class="w-[10px] h-[10px]"></lucide-icon>
+                                        Verified
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div
+                            class="text-[9px] font-bold uppercase text-emerald-500 tracking-widest bg-emerald-50 px-3 py-1 rounded-lg">
+                            Present
+                        </div>
+                    </div>
+                </ng-container>
+                <ng-template #noRecords>
+                    <div
+                        class="py-20 flex flex-col items-center justify-center text-slate-400 bg-white/40 rounded-2xl border-2 border-dashed border-rose-50">
+                        <lucide-icon [img]="AlertCircle" class="w-10 h-10 mb-4 text-rose-100"></lucide-icon>
+                        <p class="font-bold text-base text-slate-600">No Check-ins Today</p>
+                        <p class="text-xs font-medium text-slate-400 mt-1 px-4 text-center">Scan the classroom QR to
+                            update your log.</p>
+                        <button (click)="handleStartScan()"
+                            class="mt-6 px-6 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95">
+                            Open Scanner
+                        </button>
+                    </div>
+                </ng-template>
+            </div>
+        </div>
+
+        <!-- Subject View -->
+        <div *ngIf="viewMode === 'subject'" @fadeIn class="w-full">
+            <ng-container *ngIf="!selectedSubject; else detailView">
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                    <div *ngFor="let subject of subjectSummaries" (click)="selectedSubject = subject.name"
+                        class="glass-card rounded-2xl p-6 cursor-pointer group hover:shadow-lg hover:-translate-y-0.5 transition-all border-white/60">
+                        <div class="flex justify-between items-start mb-6">
+                            <div
+                                class="w-10 h-10 rounded-xl bg-rose-50 text-rose-500 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-all shadow-sm">
+                                <lucide-icon [img]="BookOpen" class="w-5 h-5"></lucide-icon>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-bold text-slate-800 tracking-tight leading-none">{{ subject.rate
+                                    }}%</p>
+                                <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Rate</p>
+                            </div>
+                        </div>
+
+                        <h4 class="text-lg font-bold text-slate-800 mb-2 tracking-tight leading-tight">{{ subject.name
+                            }}</h4>
+                        <p class="text-[10px] font-semibold text-gray-400 mb-6 uppercase tracking-widest">
+                            {{ subject.present }} / {{ subject.total }} Sessions
+                        </p>
+
+                        <div class="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                            <div class="h-full bg-rose-400 rounded-full transition-all duration-1000"
+                                [style.width.%]="subject.rate"></div>
+                        </div>
+                    </div>
+                </div>
+            </ng-container>
+
+            <ng-template #detailView>
+                <div class="glass-card rounded-2xl p-6 lg:p-8 border-white/50 shadow-sm relative">
+                    <button (click)="selectedSubject = null"
+                        class="flex items-center gap-2 text-slate-400 hover:text-slate-800 font-bold text-[10px] uppercase tracking-widest transition-all mb-8 group">
+                        <lucide-icon [img]="ChevronLeft" class="w-4 h-4"></lucide-icon>
+                        Back to Overview
+                    </button>
+
+                    <div
+                        class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 pb-8 border-b border-slate-50">
+                        <div class="flex items-center gap-5">
+                            <div
+                                class="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                                <lucide-icon [img]="History" class="w-6 h-6"></lucide-icon>
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-bold text-slate-800 tracking-tight leading-none">{{
+                                    selectedSubject }}</h3>
+                                <p class="text-gray-400 font-semibold text-xs mt-1">Detailed session history</p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex items-center gap-4 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100/50">
+                            <div class="text-right">
+                                <p class="text-[9px] font-bold text-rose-400 uppercase tracking-widest mb-1">Attendance
+                                </p>
+                                <p class="text-2xl font-bold text-slate-800 tracking-tight leading-none">
+                                    {{ getSelectedSubjectRate() }}%
+                                </p>
+                            </div>
+                            <lucide-icon [img]="ShieldCheck" class="w-6 h-6 text-emerald-500"></lucide-icon>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div *ngFor="let record of selectedSubjectRecords" @fadeIn
+                            class="flex items-center justify-between p-4 rounded-xl bg-white border border-rose-50/40 hover:bg-slate-50 transition-all group">
+                            <div class="flex items-center gap-5">
+                                <div class="w-11 h-11 rounded-xl flex items-center justify-center"
+                                    [ngClass]="record.status === 'present' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'">
+                                    <lucide-icon *ngIf="record.status === 'present'" [img]="CheckCircle"
+                                        class="w-5 h-5"></lucide-icon>
+                                    <lucide-icon *ngIf="record.status !== 'present'" [img]="XCircle"
+                                        class="w-5 h-5"></lucide-icon>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-sm text-slate-800 tracking-tight leading-none mb-1.5">
+                                        {{ record.date | date:'dd MMM yyyy' }}
+                                    </p>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                            Session
+                                        </span>
+                                        <span *ngIf="record.timestamp"
+                                            class="text-[9px] font-bold text-emerald-500 uppercase tracking-widest">
+                                            {{ record.timestamp }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest"
+                                [ngClass]="record.status === 'present' ? 'bg-emerald-500 text-white' : 'bg-rose-100 text-rose-500'">
+                                {{ record.status }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </ng-template>
+        </div>
+    </div>
+
+    <!-- Scanner Modal -->
+    <div *ngIf="isScannerOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            (click)="scanStatus !== 'scanning' && isScannerOpen = false"></div>
+        <div
+            class="bg-white/95 backdrop-blur-md w-full max-w-sm rounded-[2.5rem] shadow-2xl relative overflow-hidden max-h-[90vh] flex flex-col animate-[fadeInUp_0.3s_ease-out]">
+            <button (click)="isScannerOpen = false"
+                class="absolute top-4 right-4 text-slate-300 hover:text-slate-500 hover:bg-slate-100 p-2 rounded-xl transition-all z-20"
+                title="Close Scanner" aria-label="Close Scanner">
+                <lucide-icon [img]="X" class="w-[18px] h-[18px]"></lucide-icon>
+            </button>
+            <div class="p-6 text-center flex-1 overflow-y-auto no-scrollbar">
+                <div class="mb-4">
+                    <div
+                        class="w-40 h-40 mx-auto rounded-3xl bg-slate-100 overflow-hidden relative border-4 border-white shadow-lg">
+                        <ng-container *ngIf="scanStatus === 'scanning'">
+                            <div class="absolute inset-0 bg-slate-900 flex items-center justify-center">
+                                <lucide-icon [img]="Camera" class="w-8 h-8 text-white/10 animate-pulse"></lucide-icon>
+                            </div>
+                            <div
+                                class="absolute left-[10%] right-[10%] h-0.5 bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)] z-10 rounded-full animate-[scan_2s_linear_infinite]">
+                            </div>
+                            <!-- Corners -->
+                            <div
+                                class="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-blue-500 rounded-tl-xl">
+                            </div>
+                            <div
+                                class="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-blue-500 rounded-tr-xl">
+                            </div>
+                            <div
+                                class="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-blue-500 rounded-bl-xl">
+                            </div>
+                            <div
+                                class="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-blue-500 rounded-br-xl">
+                            </div>
+                        </ng-container>
+
+                        <ng-container *ngIf="scanStatus === 'success'">
+                            <div
+                                class="absolute inset-0 bg-emerald-500 flex flex-col items-center justify-center text-white">
+                                <div
+                                    class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-emerald-500 mb-3 shadow-md animate-[bounce_0.5s]">
+                                    <lucide-icon [img]="CheckCircle" class="w-6 h-6"></lucide-icon>
+                                </div>
+                                <p class="text-lg font-black uppercase tracking-tight">Verified</p>
+                            </div>
+                        </ng-container>
+
+                        <ng-container *ngIf="scanStatus === 'error' || scanStatus === 'location-denied'">
+                            <div
+                                class="absolute inset-0 bg-rose-500 flex flex-col items-center justify-center text-white p-4">
+                                <div
+                                    class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-rose-500 mb-3 shadow-lg">
+                                    <lucide-icon [img]="scanStatus === 'location-denied' ? Navigation : AlertCircle"
+                                        class="w-5 h-5"></lucide-icon>
+                                </div>
+                                <p class="text-sm font-black uppercase tracking-tight">Error</p>
+                                <p class="text-[8px] font-bold mt-1 text-center font-mono opacity-90">{{ errorMessage }}
+                                </p>
+                                <button (click)="handleStartScan()"
+                                    class="mt-3 px-4 py-1.5 bg-white text-rose-600 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all">Retry</button>
+                            </div>
+                        </ng-container>
+                    </div>
+                </div>
+                <h3 class="text-lg font-black text-slate-800 tracking-tight">
+                    {{ scanStatus === 'scanning' ? 'Verifying GPS' : scanStatus === 'success' ? 'Confirmed' : 'Access
+                    Denied' }}
+                </h3>
+                <p
+                    class="text-slate-400 font-bold text-[10px] leading-relaxed max-w-xs mx-auto mt-2 px-4 uppercase tracking-wider">
+                    {{ scanStatus === 'scanning' ? 'Please stay within the classroom boundaries' : scanStatus ===
+                    'success' ? 'Your attendance has been logged' : 'Location authentication failed' }}
+                </p>
+            </div>
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-center gap-2 shrink-0">
+                <lucide-icon [img]="ShieldCheck" class="w-[14px] h-[14px] text-emerald-500"></lucide-icon>
+                <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Campvia Secure Auth</p>
+            </div>
+        </div>
+    </div>
+</div>
