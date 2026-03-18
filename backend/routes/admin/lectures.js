@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const mongoose = require('mongoose');
 const Lecture = require('../../models/Lecture');
 const Attendance = require('../../models/Attendance');
 const Student = require('../../models/Student');
@@ -106,6 +107,9 @@ router.put('/:id/attendance', async (req, res) => {
 // Start QR session
 router.post('/:id/qr-session/start', async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid lecture ID for QR session' });
+    }
     const lecture = await Lecture.findById(req.params.id);
     if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
     lecture.qrSession = {
@@ -122,6 +126,9 @@ router.post('/:id/qr-session/start', async (req, res) => {
 // Stop QR session
 router.post('/:id/qr-session/stop', async (req, res) => {
   try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid lecture ID for QR session' });
+    }
     const lecture = await Lecture.findById(req.params.id);
     if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
     lecture.qrSession = { active: false, location: { lat: 0, lng: 0 } };

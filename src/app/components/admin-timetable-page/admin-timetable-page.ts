@@ -726,33 +726,72 @@ export class AdminTimetablePage implements OnInit {
     this.cdr.detectChanges();
 
     const handleSuccess = (lat: number, lng: number) => {
-      if (!lecture.id || lecture.id.startsWith('subject-')) {
-        this.qrStatus = 'error';
-        this.qrErrorMessage = 'Please create a lecture entry first, then generate QR.';
-        this.cdr.detectChanges();
+      const startSessionForLecture = (lectureId: string, lectureSubject: string) => {
+        this.api.startQrSession(lectureId, { lat, lng }).subscribe({
+          next: () => {
+            const origin = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin : '';
+            this.qrScanUrl = origin
+              ? `${origin}/?scan=${encodeURIComponent(lectureId)}`
+              : `/?scan=${encodeURIComponent(lectureId)}`;
+            this.qrStatus = 'ready';
+            this.dataService.startQrSession({
+              lectureId,
+              subject: lectureSubject,
+              location: { lat, lng }
+            });
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            this.qrStatus = 'error';
+            this.qrErrorMessage = err?.error?.message || 'Unable to start QR session.';
+            this.cdr.detectChanges();
+          }
+        });
+      };
+
+      const isVirtualLectureId = !lecture.id || lecture.id.startsWith('sched-') || lecture.id.startsWith('subject-');
+
+      if (isVirtualLectureId) {
+        const payload: any = {
+          courseId: lecture.courseId,
+          subject: lecture.subject,
+          date: lecture.date || this.todayStr,
+          time: lecture.time || 'Ongoing',
+          instructor: lecture.instructor || 'Various'
+        };
+
+        this.api.createAdminLecture(payload).subscribe({
+          next: (created: any) => {
+            const newId = created?._id || created?.id;
+            if (!newId) {
+              this.qrStatus = 'error';
+              this.qrErrorMessage = 'Lecture created but QR session could not start.';
+              this.cdr.detectChanges();
+              return;
+            }
+            const normalizedLecture: Lecture = {
+              id: newId,
+              courseId: payload.courseId,
+              subject: payload.subject,
+              date: payload.date,
+              time: payload.time,
+              instructor: payload.instructor,
+              attendance: lecture.attendance || []
+            };
+            this.currentQrLecture = normalizedLecture;
+            this.lectures = [normalizedLecture, ...this.lectures.filter(l => l.id !== newId)];
+            startSessionForLecture(newId, payload.subject);
+          },
+          error: (err) => {
+            this.qrStatus = 'error';
+            this.qrErrorMessage = err?.error?.message || 'Unable to create lecture for QR session.';
+            this.cdr.detectChanges();
+          }
+        });
         return;
       }
 
-      this.api.startQrSession(lecture.id, { lat, lng }).subscribe({
-        next: () => {
-          const origin = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin : '';
-          this.qrScanUrl = origin
-            ? `${origin}/?scan=${encodeURIComponent(lecture.id)}`
-            : `/?scan=${encodeURIComponent(lecture.id)}`;
-          this.qrStatus = 'ready';
-          this.dataService.startQrSession({
-            lectureId: lecture.id,
-            subject: lecture.subject,
-            location: { lat, lng }
-          });
-          this.cdr.detectChanges();
-        },
-        error: (err) => {
-          this.qrStatus = 'error';
-          this.qrErrorMessage = err?.error?.message || 'Unable to start QR session.';
-          this.cdr.detectChanges();
-        }
-      });
+      startSessionForLecture(lecture.id, lecture.subject);
     };
 
     let resolved = false;
@@ -799,7 +838,7 @@ export class AdminTimetablePage implements OnInit {
     this.currentQrLecture = null;
     this.qrScanUrl = '';
     this.dataService.stopQrSession();
-    if (lectureId && !lectureId.startsWith('subject-')) {
+    if (lectureId && !lectureId.startsWith('subject-') && !lectureId.startsWith('sched-')) {
       this.api.stopQrSession(lectureId).subscribe({ error: () => { } });
     }
     this.cdr.detectChanges();
