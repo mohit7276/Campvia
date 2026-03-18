@@ -158,14 +158,9 @@ export class AttendancePageComponent implements OnInit {
         this.errorMessage = '';
 
         const lectureId = this.resolveLectureId();
-
-        if (!lectureId) {
-            this.scanStatus = 'error';
-            this.errorMessage = "Please use your phone's native camera to scan the QR code shown by your instructor first.";
-            return;
+        if (lectureId) {
+            sessionStorage.setItem(this.pendingScanStorageKey, lectureId);
         }
-
-        sessionStorage.setItem(this.pendingScanStorageKey, lectureId);
 
         this.scanStatus = 'scanning';
 
@@ -198,9 +193,7 @@ export class AttendancePageComponent implements OnInit {
         const activeSession = this.dataService.activeQrSession();
         const lectureId = this.resolveLectureId();
 
-        // Checked in handleStartScan
-
-        this.api.markAttendance(lectureId as string, this.userLocation).subscribe({
+        this.api.markAttendance(lectureId || '', this.userLocation).subscribe({
             next: (attendance) => {
                 this.scanStatus = 'success';
                 const newRecord: AttendanceRecord = {

@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const mongoose = require('mongoose');
 const { auth } = require('../middleware/auth');
 const Assignment = require('../models/Assignment');
 const Attendance = require('../models/Attendance');
@@ -191,17 +192,37 @@ router.get('/attendance/stats', async (req, res) => {
 router.post('/attendance/mark', async (req, res) => {
   try {
     const { lectureId, location } = req.body;
-    const lecture = await Lecture.findById(lectureId);
+    const requestedLectureId = typeof lectureId === 'string' ? lectureId.trim() : '';
+    let lecture = null;
+
+    if (requestedLectureId && mongoose.isValidObjectId(requestedLectureId)) {
+      lecture = await Lecture.findById(requestedLectureId);
+    }
+
+    // Fallback: if scan query param is missing, use the latest active QR session
+    // for the student's course.
+    if (!lecture) {
+      const courseId = getStudentCourseId(req);
+      if (!courseId) {
+        return res.status(400).json({ message: 'No course assigned to this student.' });
+      }
+
+      lecture = await Lecture.findOne({
+        courseId,
+        'qrSession.active': true
+      }).sort({ updatedAt: -1, createdAt: -1 });
+    }
+
     if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
     if (!lecture.qrSession || !lecture.qrSession.active) {
-      return res.status(400).json({ message: 'No active QR session' });
+      return res.status(400).json({ message: 'No active attendance session found' });
     }
 
     const markTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
     // Existing lecture record may be auto-created as 'absent'. Upgrade it to
     // 'present' instead of rejecting the scan.
-    let attendance = await Attendance.findOne({ studentId: req.user._id, lectureId });
+    let attendance = await Attendance.findOne({ studentId: req.user._id, lectureId: lecture._id });
     if (attendance) {
       if (attendance.status === 'present') {
         return res.status(400).json({ message: 'Attendance already marked' });
@@ -220,7 +241,7 @@ router.post('/attendance/mark', async (req, res) => {
         subject: lecture.subject,
         status: 'present',
         timestamp: markTime,
-        lectureId
+        lectureId: lecture._id
       });
       await attendance.save();
     }
