@@ -57,10 +57,11 @@ Expected response:
 
 ## 3. Configure Frontend Production API URL
 
-Update src/environments/environment.prod.ts:
+This project uses a Vercel rewrite to forward frontend /api calls to Render.
 
-1. Set apiBaseUrl to your Render backend URL
+1. Keep src/environments/environment.prod.ts apiBaseUrl as /api
 2. Set geminiApiKey for production
+3. Ensure vercel.json rewrite destination points to your Render backend URL
 
 Example:
 
@@ -68,8 +69,21 @@ Example:
 export const environment = {
   production: true,
   geminiApiKey: 'YOUR_GEMINI_API_KEY',
-  apiBaseUrl: 'https://your-api.onrender.com/api'
+	apiBaseUrl: '/api'
 };
+```
+
+And in vercel.json:
+
+```json
+{
+	"rewrites": [
+		{
+			"source": "/api/:path*",
+			"destination": "https://your-api.onrender.com/api/:path*"
+		}
+	]
+}
 ```
 
 ## 4. Deploy Frontend on Vercel
@@ -82,7 +96,7 @@ export const environment = {
 	Output Directory: dist/angular-app/browser
 4. Deploy
 5. Copy frontend URL (example: https://your-app.vercel.app)
-6. Update backend env CORS_ORIGIN to this URL if needed and redeploy backend
+6. Update backend env CORS_ORIGIN to this URL (or wildcard like https://*.vercel.app) and redeploy backend
 
 ## 5. Verify End-to-End Production
 

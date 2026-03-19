@@ -13,11 +13,32 @@ const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .map(o => o.trim())
   .filter(Boolean);
 
+function isOriginAllowed(origin) {
+  // If no allowlist is configured, allow all browser origins.
+  if (allowedOrigins.length === 0) return true;
+
+  return allowedOrigins.some((entry) => {
+    if (!entry) return false;
+    if (entry === origin) return true;
+
+    // Support simple wildcard patterns, e.g. https://*.vercel.app
+    if (entry.includes('*')) {
+      const escaped = entry
+        .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*/g, '.*');
+      const pattern = new RegExp(`^${escaped}$`);
+      return pattern.test(origin);
+    }
+
+    return false;
+  });
+}
+
 app.use(cors({
   origin(origin, callback) {
     // Allow non-browser clients and same-origin requests with no origin header.
     if (!origin) return callback(null, true);
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));

@@ -6,8 +6,6 @@ import { trigger, transition, style, animate, query, stagger } from '@angular/an
 import { DataService, Course } from '../../services/data.service';
 import { ApiService } from '../../services/api.service';
 
-const CAMPUS_FALLBACK_LOCATION = { lat: 23.0258, lng: 72.5873 };
-
 export interface AdminScheduleItem {
   id: string;
   courseId: string;
@@ -741,9 +739,9 @@ export class AdminTimetablePage implements OnInit {
     this.qrScanUrl = '';
     this.cdr.detectChanges();
 
-    const handleSuccess = (lat: number, lng: number) => {
+    const handleSuccess = (lat: number, lng: number, accuracy: number = 0) => {
       const startSessionForLecture = (lectureId: string, lectureSubject: string) => {
-        this.api.publishAttendance(lectureId, { lat, lng }).subscribe({
+        this.api.publishAttendance(lectureId, { lat, lng, accuracy }).subscribe({
           next: (res: any) => {
             this.qrScanUrl = '';
             this.qrStatus = 'ready';
@@ -814,14 +812,18 @@ export class AdminTimetablePage implements OnInit {
         (position) => {
           if (!resolved) {
             resolved = true;
-            setTimeout(() => handleSuccess(position.coords.latitude, position.coords.longitude), 500);
+            setTimeout(
+              () => handleSuccess(position.coords.latitude, position.coords.longitude, position.coords.accuracy || 0),
+              500
+            );
           }
         },
         (error) => {
           if (!resolved) {
             resolved = true;
-            console.warn('Geolocation failed, using campus fallback.', error);
-            setTimeout(() => handleSuccess(CAMPUS_FALLBACK_LOCATION.lat, CAMPUS_FALLBACK_LOCATION.lng), 500);
+            this.qrStatus = 'error';
+            this.qrErrorMessage = 'Live GPS is required to publish attendance. Please enable location and try again.';
+            console.warn('Geolocation failed while publishing attendance.', error);
             this.cdr.detectChanges();
           }
         },
@@ -831,16 +833,15 @@ export class AdminTimetablePage implements OnInit {
       setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          console.warn('Geolocation hung, using campus fallback.');
-          handleSuccess(CAMPUS_FALLBACK_LOCATION.lat, CAMPUS_FALLBACK_LOCATION.lng);
+          this.qrStatus = 'error';
+          this.qrErrorMessage = 'Unable to get live GPS. Please move to open sky and try again.';
+          console.warn('Geolocation hung while publishing attendance.');
           this.cdr.detectChanges();
         }
       }, 13000);
     } else {
-      setTimeout(() => {
-        resolved = true;
-        handleSuccess(CAMPUS_FALLBACK_LOCATION.lat, CAMPUS_FALLBACK_LOCATION.lng);
-      }, 500);
+      this.qrStatus = 'error';
+      this.qrErrorMessage = 'Geolocation is not supported on this device/browser.';
       this.cdr.detectChanges();
     }
   }

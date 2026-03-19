@@ -315,14 +315,17 @@ router.post('/attendance/mark', async (req, res) => {
     const distanceMeters = calculateDistanceMeters(userLat, userLng, publishedLat, publishedLng);
     const userAccuracyMeters = Number.isNaN(userAccuracy) ? 0 : Math.max(0, Math.round(userAccuracy));
     const publishedAccuracyMeters = Number.isNaN(publishedAccuracy) ? 0 : Math.max(0, Math.round(publishedAccuracy));
+
+    // Treat published and user GPS accuracy as uncertainty circles and add a small safety buffer.
+    // This avoids false negatives on phones when GPS drifts indoors or near buildings.
     const adaptiveRadiusMeters = Math.max(
-      60,
-      Math.min(250, Math.round(userAccuracyMeters + publishedAccuracyMeters + 30))
+      90,
+      Math.min(500, Math.round(userAccuracyMeters + publishedAccuracyMeters + 40))
     );
 
     if (distanceMeters > adaptiveRadiusMeters) {
       return res.status(403).json({
-        message: `You are not within ${adaptiveRadiusMeters} meters of the published attendance location.`
+        message: `You are not within ${adaptiveRadiusMeters} meters of the published attendance location. Current distance is ${Math.round(distanceMeters)} meters.`
       });
     }
 
