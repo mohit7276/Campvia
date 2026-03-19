@@ -3,32 +3,21 @@ const { auth } = require('../middleware/auth');
 const Assignment = require('../models/Assignment');
 const Exam = require('../models/Exam');
 const Student = require('../models/Student');
-const Faculty = require('../models/Faculty');
 const Schedule = require('../models/Schedule');
 const Notice = require('../models/Notice');
+const {
+  getFacultyCourseIds,
+  isCourseAllowed,
+  buildScopedCourseFilter
+} = require('../utils/facultyCourseAccess');
 
 router.use(auth);
-
-// Helper: get all courseIds for the logged-in faculty member
-async function getFacultyCourseIds(req) {
-  // JWT may carry a single courseId string for legacy reasons.
-  // Also look up the full Faculty document for courseIds[] array.
-  const jwtCourseId = (req.user && req.user.courseId) ? req.user.courseId : null;
-  try {
-    const faculty = await Faculty.findById(req.user._id);
-    if (faculty && faculty.courseIds && faculty.courseIds.length > 0) {
-      return faculty.courseIds;
-    }
-  } catch (_) {}
-  // Fall back to single courseId from JWT
-  return jwtCourseId ? [jwtCourseId] : [];
-}
 
 // GET /api/faculty/assignments
 // Returns all assignments for courses this faculty teaches
 router.get('/assignments', async (req, res) => {
   try {
-    const courseIds = await getFacultyCourseIds(req);
+    const courseIds = await getFacultyCourseIds(req.user);
     if (!courseIds.length) return res.json([]);
 
     const assignments = await Assignment.find({ courseId: { $in: courseIds } }).sort({ dueDate: -1 });
@@ -46,7 +35,7 @@ router.get('/assignments/:id/submissions', async (req, res) => {
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
 
     // Verify this faculty teaches the course
-    const courseIds = await getFacultyCourseIds(req);
+    const courseIds = await getFacultyCourseIds(req.user);
     if (!courseIds.includes(assignment.courseId)) {
       return res.status(403).json({ message: 'Access denied: not your course' });
     }
@@ -64,7 +53,7 @@ router.put('/assignments/:id/submissions/:studentId/reject', async (req, res) =>
     const assignment = await Assignment.findById(req.params.id);
     if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
 
-    const courseIds = await getFacultyCourseIds(req);
+    const courseIds = await getFacultyCourseIds(req.user);
     if (!courseIds.includes(assignment.courseId)) {
       return res.status(403).json({ message: 'Access denied: not your course' });
     }
@@ -85,10 +74,15 @@ router.put('/assignments/:id/submissions/:studentId/reject', async (req, res) =>
 // GET /api/faculty/exams  — all exams for faculty's courses
 router.get('/exams', async (req, res) => {
   try {
-    const courseIds = await getFacultyCourseIds(req);
+    const courseIds = await getFacultyCourseIds(req.user);
     if (!courseIds.length) return res.json([]);
-    const filter = { courseId: { $in: courseIds } };
-    if (req.query.courseId) filter.courseId = req.query.courseId;
+    const filter = buildScopedCourseFilter({}, courseIds);
+    if (req.query.courseId) {
+      if (!isCourseAllowed(courseIds, req.query.courseId)) {
+        return res.status(403).json({ message: 'Access denied: not your course' });
+      }
+      filter.courseId = req.query.courseId;
+    }
     if (req.query.status) filter.status = req.query.status;
     const exams = await Exam.find(filter).sort({ date: -1 });
     res.json(exams);
@@ -100,8 +94,8 @@ router.get('/exams', async (req, res) => {
 // POST /api/faculty/exams
 router.post('/exams', async (req, res) => {
   try {
-    const courseIds = await getFacultyCourseIds(req);
-    if (!courseIds.includes(req.body.courseId)) {
+    const courseIds = await getFacultyCourseIds(req.user);
+    if (!isCourseAllowed(courseIds, req.body.courseId)) {
       return res.status(403).json({ message: 'Not your course' });
     }
     const exam = new Exam(req.body);
@@ -115,8 +109,17 @@ router.post('/exams', async (req, res) => {
 // PUT /api/faculty/exams/:id
 router.put('/exams/:id', async (req, res) => {
   try {
+    const courseIds = await getFacultyCourseIds(req.user);
+    const existing = await Exam.findById(req.params.id).lean();
+    if (!existing) return res.status(404).json({ message: 'Exam not found' });
+    if (!isCourseAllowed(courseIds, existing.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+    if (req.body.courseId && !isCourseAllowed(courseIds, req.body.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     const exam = await Exam.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!exam) return res.status(404).json({ message: 'Exam not found' });
     res.json(exam);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -126,8 +129,14 @@ router.put('/exams/:id', async (req, res) => {
 // DELETE /api/faculty/exams/:id
 router.delete('/exams/:id', async (req, res) => {
   try {
+    const courseIds = await getFacultyCourseIds(req.user);
+    const existing = await Exam.findById(req.params.id).lean();
+    if (!existing) return res.status(404).json({ message: 'Exam not found' });
+    if (!isCourseAllowed(courseIds, existing.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     const exam = await Exam.findByIdAndDelete(req.params.id);
-    if (!exam) return res.status(404).json({ message: 'Exam not found' });
     res.json({ message: 'Exam deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -137,8 +146,12 @@ router.delete('/exams/:id', async (req, res) => {
 // PUT /api/faculty/exams/:id/scores  — save student scores
 router.put('/exams/:id/scores', async (req, res) => {
   try {
+    const courseIds = await getFacultyCourseIds(req.user);
     const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ message: 'Exam not found' });
+    if (!isCourseAllowed(courseIds, exam.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
     exam.studentResults = req.body.studentResults;
     await exam.save();
     res.json(exam);
@@ -150,8 +163,12 @@ router.put('/exams/:id/scores', async (req, res) => {
 // PUT /api/faculty/exams/:id/publish  — publish or unpublish results
 router.put('/exams/:id/publish', async (req, res) => {
   try {
+    const courseIds = await getFacultyCourseIds(req.user);
     const exam = await Exam.findById(req.params.id);
     if (!exam) return res.status(404).json({ message: 'Exam not found' });
+    if (!isCourseAllowed(courseIds, exam.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
     exam.resultsPublished = req.body.publish;
     await exam.save();
     res.json(exam);
@@ -164,7 +181,7 @@ router.put('/exams/:id/publish', async (req, res) => {
 // Returns today's schedule, upcoming exams, and notices for the faculty's courses
 router.get('/dashboard/summary', async (req, res) => {
   try {
-    const courseIds = await getFacultyCourseIds(req);
+    const courseIds = await getFacultyCourseIds(req.user);
     if (!courseIds.length) {
       return res.json({ schedule: [], tests: [], notices: [] });
     }
@@ -197,6 +214,11 @@ router.get('/dashboard/summary', async (req, res) => {
 // GET /api/faculty/courses/:courseId/students  — students enrolled in a course
 router.get('/courses/:courseId/students', async (req, res) => {
   try {
+    const courseIds = await getFacultyCourseIds(req.user);
+    if (!isCourseAllowed(courseIds, req.params.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     const students = await Student.find({ courseId: req.params.courseId }).select('_id name email');
     res.json(students);
   } catch (error) {

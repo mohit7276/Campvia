@@ -104,7 +104,7 @@ export class AdminTimetablePage implements OnInit {
   // Main tab: 'schedule' (recurring) or 'lectures' (date-specific with attendance)
   mainTab: 'schedule' | 'lectures' = 'schedule';
 
-  selectedCourseId: string = 'C01';
+  selectedCourseId: string = 'ALL';
   selectedDate: Date = new Date();
   isCalendarOpen = false;
   viewDate: Date = new Date();
@@ -166,7 +166,6 @@ export class AdminTimetablePage implements OnInit {
 
   ngOnInit() {
     if (this.coursesList.length > 0) {
-      this.selectedCourseId = this.coursesList[0].id;
       this.formCourseId = this.coursesList[0].id;
       this.lectureFormCourseId = this.coursesList[0].id;
     }
@@ -201,7 +200,7 @@ export class AdminTimetablePage implements OnInit {
   get currentSchedule(): AdminScheduleItem[] {
     const currentDay = this.selectedDate.getDay();
     return this.schedules
-      .filter(s => s.courseId === this.selectedCourseId && s.dayOfWeek === currentDay)
+      .filter(s => (this.selectedCourseId === 'ALL' || s.courseId === this.selectedCourseId) && s.dayOfWeek === currentDay)
       .sort((a, b) => {
         const timeToMinutes = (t: string) => {
           let [time, modifier] = t.split(' ');
@@ -281,7 +280,9 @@ export class AdminTimetablePage implements OnInit {
   openAddScheduleModal() {
     this.isEditing = false;
     this.currentScheduleId = null;
-    this.formCourseId = this.selectedCourseId;
+    this.formCourseId = this.selectedCourseId === 'ALL'
+      ? (this.coursesList[0]?.id || this.formCourseId)
+      : this.selectedCourseId;
     this.formDayOfWeek = this.selectedDate.getDay();
     this.formSubject = this.availableSubjects.length > 0 ? this.availableSubjects[0] : '';
     this.formTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -424,12 +425,15 @@ export class AdminTimetablePage implements OnInit {
   }
 
   get lectureFilterSubjects(): string[] {
+    if (this.selectedCourseId === 'ALL') {
+      return Array.from(new Set(this.coursesList.flatMap(c => c.subjects || []))).sort((a, b) => a.localeCompare(b));
+    }
     const c = this.coursesList.find(c => c.id === this.selectedCourseId);
     return c ? c.subjects : [];
   }
 
   get filteredLectures(): Lecture[] {
-    let filtered = this.lectures.filter(l => l.courseId === this.selectedCourseId);
+    let filtered = this.lectures.filter(l => this.selectedCourseId === 'ALL' || l.courseId === this.selectedCourseId);
 
     if (this.lectureViewMode === 'today') {
       filtered = filtered.filter(l => l.date === this.todayStr);
@@ -437,7 +441,7 @@ export class AdminTimetablePage implements OnInit {
       // Merge timetable schedule items for today as virtual lectures
       const todayDay = new Date().getDay();
       const todaySchedule = this.schedules.filter(
-        s => s.courseId === this.selectedCourseId && s.dayOfWeek === todayDay
+        s => (this.selectedCourseId === 'ALL' || s.courseId === this.selectedCourseId) && s.dayOfWeek === todayDay
       );
       for (const s of todaySchedule) {
         const alreadyExists = filtered.some(
@@ -463,7 +467,7 @@ export class AdminTimetablePage implements OnInit {
 
       // Also include timetable schedule items for the selected subject (all dates)
       const subjectSchedule = this.schedules.filter(
-        s => s.courseId === this.selectedCourseId && s.subject === this.selectedSubject
+        s => (this.selectedCourseId === 'ALL' || s.courseId === this.selectedCourseId) && s.subject === this.selectedSubject
       );
       for (const s of subjectSchedule) {
         const alreadyExists = filtered.some(l => l.subject === s.subject);
@@ -504,7 +508,9 @@ export class AdminTimetablePage implements OnInit {
   openAddLectureModal() {
     this.isLectureEditing = false;
     this.currentLectureId = null;
-    this.lectureFormCourseId = this.selectedCourseId;
+    this.lectureFormCourseId = this.selectedCourseId === 'ALL'
+      ? (this.coursesList[0]?.id || this.lectureFormCourseId)
+      : this.selectedCourseId;
     this.lectureFormSubject = this.lectureAvailableSubjects.length > 0 ? this.lectureAvailableSubjects[0] : '';
     this.lectureFormDate = this.todayStr;
     this.lectureFormTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -706,9 +712,17 @@ export class AdminTimetablePage implements OnInit {
 
   openSubjectPublishModal(subject: string, event?: Event) {
     if (event) event.stopPropagation();
+    const courseIdForPublish = this.selectedCourseId === 'ALL'
+      ? (this.coursesList.find(c => (c.subjects || []).includes(subject))?.id || '')
+      : this.selectedCourseId;
+
+    if (!courseIdForPublish) {
+      return;
+    }
+
     const syntheticLecture: Lecture = {
       id: 'subject-' + subject,
-      courseId: this.selectedCourseId,
+      courseId: courseIdForPublish,
       subject: subject,
       date: this.todayStr,
       time: 'Ongoing',

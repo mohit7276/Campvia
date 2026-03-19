@@ -3,9 +3,10 @@ const Faculty = require('../../models/Faculty');
 const Student = require('../../models/Student');
 const Admin = require('../../models/Admin');
 const FacultyPost = require('../../models/FacultyPost');
-const { auth, adminOnly } = require('../../middleware/auth');
+const { auth, adminOrFaculty } = require('../../middleware/auth');
+const { getAllowedCourseIds, resolveToCanonicalCourseIds } = require('../../utils/facultyCourseAccess');
 
-router.use(auth, adminOnly);
+router.use(auth, adminOrFaculty);
 
 // Helper: check email across all collections
 async function isEmailTaken(email, excludeId) {
@@ -22,7 +23,9 @@ async function isEmailTaken(email, excludeId) {
 // Get all faculty
 router.get('/', async (req, res) => {
   try {
-    const faculty = await Faculty.find().select('-password');
+    const allowedCourseIds = await getAllowedCourseIds(req);
+    const filter = allowedCourseIds === null ? {} : { courseIds: { $in: allowedCourseIds } };
+    const faculty = await Faculty.find(filter).select('-password');
     // Attach posts for each faculty
     const result = await Promise.all(faculty.map(async (f) => {
       const posts = await FacultyPost.find({ facultyId: f._id });
@@ -37,8 +40,16 @@ router.get('/', async (req, res) => {
 // Get single faculty
 router.get('/:id', async (req, res) => {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
     const faculty = await Faculty.findById(req.params.id).select('-password');
     if (!faculty) return res.status(404).json({ message: 'Faculty not found' });
+    if (allowedCourseIds !== null) {
+      const hasAnyAllowedCourse = (faculty.courseIds || []).some((cid) => allowedCourseIds.includes(String(cid)));
+      if (!hasAnyAllowedCourse) {
+        return res.status(403).json({ message: 'Access denied: not your course' });
+      }
+    }
+
     const posts = await FacultyPost.find({ facultyId: faculty._id });
     res.json({ ...faculty.toObject(), sharedPosts: posts });
   } catch (error) {
@@ -49,6 +60,10 @@ router.get('/:id', async (req, res) => {
 // Create faculty
 router.post('/', async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     const { name, email, password, department, designation, phone, address, subjects, experience, office, courseIds } = req.body;
     
     if (!name || !email || !password) {
@@ -59,12 +74,14 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Email already exists' });
     }
 
+    const canonicalCourseIds = await resolveToCanonicalCourseIds(courseIds || []);
+
     const faculty = new Faculty({
       name, email, password,
       department: department || '', designation: designation || '',
       phone: phone || '', address: address || '',
       subjects: subjects || [], experience: experience || '',
-      office: office || '', courseIds: courseIds || [],
+      office: office || '', courseIds: canonicalCourseIds,
       status: 'active'
     });
     await faculty.save();
@@ -79,7 +96,15 @@ router.post('/', async (req, res) => {
 // Update faculty
 router.put('/:id', async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     const updates = { ...req.body };
+
+    if (updates.courseIds) {
+      updates.courseIds = await resolveToCanonicalCourseIds(updates.courseIds);
+    }
     
     // Check email uniqueness if email is being changed
     if (updates.email) {
@@ -105,6 +130,10 @@ router.put('/:id', async (req, res) => {
 // Delete faculty
 router.delete('/:id', async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     await FacultyPost.deleteMany({ facultyId: req.params.id });
     const faculty = await Faculty.findByIdAndDelete(req.params.id);
     if (!faculty) return res.status(404).json({ message: 'Faculty not found' });

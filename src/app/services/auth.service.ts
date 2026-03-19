@@ -9,7 +9,17 @@ export class AuthService {
 
     // Using signals for reactive state
     isLoggedIn = signal(false);
-    currentUser = signal<{ name: string; email: string; role: 'student' | 'faculty' | 'admin'; courseId?: string; course?: string; semester?: string | number; status?: string; avatar?: string } | null>(null);
+    currentUser = signal<{
+        name: string;
+        email: string;
+        role: 'student' | 'faculty' | 'admin';
+        courseId?: string;
+        courseIds?: string[];
+        course?: string;
+        semester?: string | number;
+        status?: string;
+        avatar?: string;
+    } | null>(null);
 
     constructor() {
         // Restore session from sessionStorage (per-tab)
@@ -32,7 +42,17 @@ export class AuthService {
             this.api.login(email, password, role).subscribe({
                 next: (res: any) => {
                     sessionStorage.setItem('auth_token', res.token);
-                    const user = { name: res.user.name, email: res.user.email, role: res.user.role, courseId: res.user.courseId || '', course: res.user.course || '', semester: res.user.semester || '', status: res.user.status || 'active', avatar: res.user.avatar || '' };
+                    const user = {
+                        name: res.user.name,
+                        email: res.user.email,
+                        role: res.user.role,
+                        courseId: res.user.courseId || '',
+                        courseIds: Array.isArray(res.user.courseIds) ? res.user.courseIds : [],
+                        course: res.user.course || '',
+                        semester: res.user.semester || '',
+                        status: res.user.status || 'active',
+                        avatar: res.user.avatar || ''
+                    };
                     sessionStorage.setItem('auth_user', JSON.stringify(user));
                     this.isLoggedIn.set(true);
                     this.currentUser.set(user);
@@ -48,7 +68,17 @@ export class AuthService {
             this.api.register(name, email, password, role).subscribe({
                 next: (res: any) => {
                     sessionStorage.setItem('auth_token', res.token);
-                    const user = { name: res.user.name, email: res.user.email, role: res.user.role, courseId: res.user.courseId || '', course: res.user.course || '', semester: res.user.semester || '', status: res.user.status || 'active', avatar: res.user.avatar || '' };
+                    const user = {
+                        name: res.user.name,
+                        email: res.user.email,
+                        role: res.user.role,
+                        courseId: res.user.courseId || '',
+                        courseIds: Array.isArray(res.user.courseIds) ? res.user.courseIds : [],
+                        course: res.user.course || '',
+                        semester: res.user.semester || '',
+                        status: res.user.status || 'active',
+                        avatar: res.user.avatar || ''
+                    };
                     sessionStorage.setItem('auth_user', JSON.stringify(user));
                     this.isLoggedIn.set(true);
                     this.currentUser.set(user);
@@ -87,6 +117,7 @@ export class AuthService {
                             email: u.email,
                             role: u.role,
                             courseId: u.courseId || '',
+                            courseIds: Array.isArray(u.courseIds) ? u.courseIds : [],
                             course: u.course || '',
                             semester: u.semester || '',
                             status: u.status || 'active',

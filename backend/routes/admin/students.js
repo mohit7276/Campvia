@@ -4,9 +4,14 @@ const Faculty = require('../../models/Faculty');
 const Admin = require('../../models/Admin');
 const Fee = require('../../models/Fee');
 const { ensureSemesterFeesForStudent } = require('../../utils/semesterFees');
-const { auth, adminOnly } = require('../../middleware/auth');
+const { auth, adminOrFaculty } = require('../../middleware/auth');
+const {
+  getAllowedCourseIds,
+  isCourseAllowed,
+  buildScopedCourseFilter
+} = require('../../utils/facultyCourseAccess');
 
-router.use(auth, adminOnly);
+router.use(auth, adminOrFaculty);
 
 // Helper: check email across all collections
 async function isEmailTaken(email, excludeId) {
@@ -63,6 +68,10 @@ async function generateFeesForStudent(studentId, courseId) {
 // Get next suggested roll number
 router.get('/next-roll-no', async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     const rollNo = await getNextRollNo();
     res.json({ rollNo });
   } catch (error) {
@@ -73,6 +82,10 @@ router.get('/next-roll-no', async (req, res) => {
 // Check if a roll number is already taken
 router.get('/check-roll-no', async (req, res) => {
   try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
     const { rollNo, excludeId } = req.query;
     if (!rollNo || !rollNo.trim()) {
       return res.status(400).json({ message: 'rollNo is required' });
@@ -87,8 +100,15 @@ router.get('/check-roll-no', async (req, res) => {
 // Get all students
 router.get('/', async (req, res) => {
   try {
-    const query = {};
-    if (req.query.courseId) query.courseId = req.query.courseId;
+    const allowedCourseIds = await getAllowedCourseIds(req);
+    const query = buildScopedCourseFilter({}, allowedCourseIds);
+    if (req.query.courseId) {
+      if (!isCourseAllowed(allowedCourseIds, req.query.courseId)) {
+        return res.status(403).json({ message: 'Access denied: not your course' });
+      }
+      query.courseId = req.query.courseId;
+    }
+
     const students = await Student.find(query).select('-password').lean();
     res.json(students);
   } catch (error) {
@@ -99,8 +119,13 @@ router.get('/', async (req, res) => {
 // Get single student
 router.get('/:id', async (req, res) => {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
     const student = await Student.findById(req.params.id).select('-password').lean();
     if (!student) return res.status(404).json({ message: 'Student not found' });
+    if (!isCourseAllowed(allowedCourseIds, student.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     res.json(student);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -110,10 +135,15 @@ router.get('/:id', async (req, res) => {
 // Create student
 router.post('/', async (req, res) => {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
     const { name, email, password, course, courseId, year, phone, address, feesPaid, rollNo } = req.body;
     
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+
+    if (courseId && !isCourseAllowed(allowedCourseIds, courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
     }
 
     if (await isEmailTaken(email)) {
@@ -155,6 +185,7 @@ router.post('/', async (req, res) => {
 // Update student
 router.put('/:id', async (req, res) => {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
     const updates = { ...req.body };
     
     // Check email uniqueness if email is being changed
@@ -190,6 +221,14 @@ router.put('/:id', async (req, res) => {
 
     // Check if courseId is being changed — need old student data first
     const oldStudent = await Student.findById(req.params.id);
+    if (!oldStudent) return res.status(404).json({ message: 'Student not found' });
+    if (!isCourseAllowed(allowedCourseIds, oldStudent.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+    if (updates.courseId && !isCourseAllowed(allowedCourseIds, updates.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     const courseChanged = oldStudent && updates.courseId && updates.courseId !== oldStudent.courseId;
 
     // Detect feesPaid change
@@ -198,7 +237,6 @@ router.put('/:id', async (req, res) => {
     const feesPaidChanging = newFeesPaidRaw !== undefined && oldStudent;
 
     const student = await Student.findByIdAndUpdate(req.params.id, updates, { new: true }).select('-password');
-    if (!student) return res.status(404).json({ message: 'Student not found' });
 
     // Auto-generate fee records if course changed
     if (courseChanged) {
@@ -249,8 +287,14 @@ router.put('/:id', async (req, res) => {
 // Delete student (cascade-deletes all associated fee records)
 router.delete('/:id', async (req, res) => {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
+    const existing = await Student.findById(req.params.id).select('courseId').lean();
+    if (!existing) return res.status(404).json({ message: 'Student not found' });
+    if (!isCourseAllowed(allowedCourseIds, existing.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     const student = await Student.findByIdAndDelete(req.params.id);
-    if (!student) return res.status(404).json({ message: 'Student not found' });
     // Remove all fee records that belong to this student
     await Fee.deleteMany({ studentId: req.params.id });
     res.json({ message: 'Student deleted' });

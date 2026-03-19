@@ -3,7 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const Notice = require('../models/Notice');
-const { auth, adminOnly } = require('../middleware/auth');
+const { auth, adminOrFaculty } = require('../middleware/auth');
+const { getFacultyCourseIds, isCourseAllowed } = require('../utils/facultyCourseAccess');
 
 // ── File Upload Setup ────────────────────────────────────────────
 const uploadDir = path.join(__dirname, '..', 'uploads', 'notices');
@@ -35,8 +36,8 @@ function getFileType(filename) {
   return 'other';
 }
 
-// Upload a file attachment for a notice (admin only)
-router.post('/upload', auth, adminOnly, upload.single('file'), (req, res) => {
+// Upload a file attachment for a notice (admin/faculty)
+router.post('/upload', auth, adminOrFaculty, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
   const url = `/api/uploads/notices/${req.file.filename}`;
   const type = getFileType(req.file.originalname);
@@ -67,6 +68,15 @@ router.get('/', auth, async (req, res) => {
       } else {
         filter = { $or: [{ courseId: '' }, { courseId: { $exists: false } }, { courseId }] };
       }
+    } else if (req.user.role === 'faculty') {
+      const facultyCourseIds = await getFacultyCourseIds(req.user);
+      filter = {
+        $or: [
+          { courseId: '' },
+          { courseId: { $exists: false } },
+          { courseId: { $in: facultyCourseIds } }
+        ]
+      };
     }
     const notices = await Notice.find(filter).sort({ date: -1 });
     res.json(notices.map(normalizeNotice));
@@ -75,9 +85,17 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Create notice (admin only)
-router.post('/', auth, adminOnly, async (req, res) => {
+// Create notice (admin/faculty with course scoping)
+router.post('/', auth, adminOrFaculty, async (req, res) => {
   try {
+    if (req.user.role === 'faculty') {
+      const facultyCourseIds = await getFacultyCourseIds(req.user);
+      const requestedCourseId = String(req.body.courseId || '').trim();
+      if (requestedCourseId && !isCourseAllowed(facultyCourseIds, requestedCourseId)) {
+        return res.status(403).json({ message: 'Access denied: not your course' });
+      }
+    }
+
     const notice = new Notice(req.body);
     await notice.save();
     res.status(201).json(notice);
@@ -86,9 +104,22 @@ router.post('/', auth, adminOnly, async (req, res) => {
   }
 });
 
-// Update notice (admin only)
-router.put('/:id', auth, adminOnly, async (req, res) => {
+// Update notice (admin/faculty with course scoping)
+router.put('/:id', auth, adminOrFaculty, async (req, res) => {
   try {
+    if (req.user.role === 'faculty') {
+      const facultyCourseIds = await getFacultyCourseIds(req.user);
+      const existing = await Notice.findById(req.params.id).lean();
+      if (!existing) return res.status(404).json({ message: 'Notice not found' });
+      if (existing.courseId && !isCourseAllowed(facultyCourseIds, existing.courseId)) {
+        return res.status(403).json({ message: 'Access denied: not your course' });
+      }
+      const requestedCourseId = String(req.body.courseId || '').trim();
+      if (requestedCourseId && !isCourseAllowed(facultyCourseIds, requestedCourseId)) {
+        return res.status(403).json({ message: 'Access denied: not your course' });
+      }
+    }
+
     const notice = await Notice.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!notice) return res.status(404).json({ message: 'Notice not found' });
     res.json(notice);
@@ -97,9 +128,18 @@ router.put('/:id', auth, adminOnly, async (req, res) => {
   }
 });
 
-// Delete notice (admin only)
-router.delete('/:id', auth, adminOnly, async (req, res) => {
+// Delete notice (admin/faculty with course scoping)
+router.delete('/:id', auth, adminOrFaculty, async (req, res) => {
   try {
+    if (req.user.role === 'faculty') {
+      const facultyCourseIds = await getFacultyCourseIds(req.user);
+      const existing = await Notice.findById(req.params.id).lean();
+      if (!existing) return res.status(404).json({ message: 'Notice not found' });
+      if (existing.courseId && !isCourseAllowed(facultyCourseIds, existing.courseId)) {
+        return res.status(403).json({ message: 'Access denied: not your course' });
+      }
+    }
+
     const notice = await Notice.findByIdAndDelete(req.params.id);
     if (!notice) return res.status(404).json({ message: 'Notice not found' });
     res.json({ message: 'Notice deleted' });

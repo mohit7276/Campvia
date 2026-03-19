@@ -1,5 +1,6 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { ApiService } from './api.service';
+import { AuthService } from './auth.service';
 
 export interface QrSession {
   lectureId: string;
@@ -31,8 +32,26 @@ export interface Course {
 })
 export class DataService {
   private api = inject(ApiService);
+  private auth = inject(AuthService);
 
   courses = signal<Course[]>([]);
+
+  private getAllowedFacultyCourseIds(): string[] | null {
+    const user = this.auth.currentUser();
+    if (!user || user.role !== 'faculty') return null;
+
+    const fromArray = Array.isArray(user.courseIds)
+      ? user.courseIds.map((id) => String(id || '').trim()).filter(Boolean)
+      : [];
+    if (fromArray.length > 0) return fromArray;
+
+    const single = String(user.courseId || '').trim();
+    if (single) return [single];
+
+    // If session does not contain faculty course mappings yet,
+    // defer to backend-scoped /admin/courses response instead of hiding all data.
+    return null;
+  }
 
   loadCourses() {
     this.api.getAdminCourses().subscribe({
@@ -54,6 +73,13 @@ export class DataService {
           description: c.description || '',
           rating: c.rating || 0
         }));
+
+        const allowedFacultyCourseIds = this.getAllowedFacultyCourseIds();
+        if (allowedFacultyCourseIds !== null) {
+          this.courses.set(mapped.filter(c => allowedFacultyCourseIds.includes(String(c.id || '').trim())));
+          return;
+        }
+
         this.courses.set(mapped);
       },
       error: () => {

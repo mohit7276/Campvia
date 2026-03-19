@@ -3,17 +3,26 @@ const mongoose = require('mongoose');
 const Lecture = require('../../models/Lecture');
 const Attendance = require('../../models/Attendance');
 const Student = require('../../models/Student');
-const { auth, adminOnly } = require('../../middleware/auth');
+const { auth, adminOrFaculty } = require('../../middleware/auth');
+const {
+  getAllowedCourseIds,
+  isCourseAllowed,
+  buildScopedCourseFilter
+} = require('../../utils/facultyCourseAccess');
 
-router.use(auth, adminOnly);
+router.use(auth, adminOrFaculty);
 
 async function publishAttendanceSession(req, res) {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ message: 'Invalid lecture ID for attendance publish' });
     }
     const lecture = await Lecture.findById(req.params.id);
     if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
+    if (!isCourseAllowed(allowedCourseIds, lecture.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
 
     const location = req.body.location || { lat: 0, lng: 0 };
     lecture.qrSession = {
@@ -37,11 +46,16 @@ async function publishAttendanceSession(req, res) {
 
 async function stopAttendanceSession(req, res) {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
     if (!mongoose.isValidObjectId(req.params.id)) {
       return res.status(400).json({ message: 'Invalid lecture ID for attendance stop' });
     }
     const lecture = await Lecture.findById(req.params.id);
     if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
+    if (!isCourseAllowed(allowedCourseIds, lecture.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     lecture.qrSession = { active: false, token: '', startedAt: null, location: { lat: 0, lng: 0 } };
     await lecture.save();
     res.json({ message: 'Attendance stopped' });
@@ -53,8 +67,14 @@ async function stopAttendanceSession(req, res) {
 // Get lectures (filter by courseId, date)
 router.get('/', async (req, res) => {
   try {
-    const filter = {};
-    if (req.query.courseId) filter.courseId = req.query.courseId;
+    const allowedCourseIds = await getAllowedCourseIds(req);
+    const filter = buildScopedCourseFilter({}, allowedCourseIds);
+    if (req.query.courseId) {
+      if (!isCourseAllowed(allowedCourseIds, req.query.courseId)) {
+        return res.status(403).json({ message: 'Access denied: not your course' });
+      }
+      filter.courseId = req.query.courseId;
+    }
     if (req.query.date) filter.date = req.query.date;
     const lectures = await Lecture.find(filter).sort({ date: -1, time: 1 });
     res.json(lectures);
@@ -66,6 +86,11 @@ router.get('/', async (req, res) => {
 // Create lecture
 router.post('/', async (req, res) => {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
+    if (!isCourseAllowed(allowedCourseIds, req.body.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     const lecture = new Lecture(req.body);
     await lecture.save();
 
@@ -95,8 +120,17 @@ router.post('/', async (req, res) => {
 // Update lecture
 router.put('/:id', async (req, res) => {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
+    const existing = await Lecture.findById(req.params.id).lean();
+    if (!existing) return res.status(404).json({ message: 'Lecture not found' });
+    if (!isCourseAllowed(allowedCourseIds, existing.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+    if (req.body.courseId && !isCourseAllowed(allowedCourseIds, req.body.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     const lecture = await Lecture.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
     res.json(lecture);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -106,8 +140,14 @@ router.put('/:id', async (req, res) => {
 // Delete lecture (also removes all linked attendance records)
 router.delete('/:id', async (req, res) => {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
+    const existing = await Lecture.findById(req.params.id).lean();
+    if (!existing) return res.status(404).json({ message: 'Lecture not found' });
+    if (!isCourseAllowed(allowedCourseIds, existing.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     const lecture = await Lecture.findByIdAndDelete(req.params.id);
-    if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
     // Cascade-delete all attendance records tied to this lecture
     await Attendance.deleteMany({ lectureId: lecture._id });
     res.json({ message: 'Lecture deleted' });
@@ -119,8 +159,13 @@ router.delete('/:id', async (req, res) => {
 // Update attendance for a lecture
 router.put('/:id/attendance', async (req, res) => {
   try {
+    const allowedCourseIds = await getAllowedCourseIds(req);
     const lecture = await Lecture.findById(req.params.id);
     if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
+    if (!isCourseAllowed(allowedCourseIds, lecture.courseId)) {
+      return res.status(403).json({ message: 'Access denied: not your course' });
+    }
+
     lecture.attendance = req.body.attendance;
     await lecture.save();
 

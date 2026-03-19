@@ -22,6 +22,21 @@ async function findUserByEmail(email) {
   return user;
 }
 
+function serializeUser(user) {
+  return {
+    _id: user._id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    courseId: user.courseId || '',
+    courseIds: Array.isArray(user.courseIds) ? user.courseIds : [],
+    course: user.course || '',
+    semester: user.semester || '',
+    status: user.status || 'active',
+    avatar: user.avatar || ''
+  };
+}
+
 // Register
 router.post('/register', async (req, res) => {
   try {
@@ -38,7 +53,7 @@ router.post('/register', async (req, res) => {
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.status(201).json({
       token,
-      user: { _id: user._id, name: user.name, email: user.email, role: user.role, courseId: user.courseId || '', course: user.course || '', semester: user.semester || '', status: user.status || 'active', avatar: user.avatar || '' }
+      user: serializeUser(user)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -54,14 +69,12 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Search in specific collection first, then fall back to all collections
+    // If role is provided, authenticate strictly against that role collection.
     let user;
     if (role) {
       const Model = getModelForRole(role);
       user = await Model.findOne({ email });
-    }
-    // If not found in the specified role collection (or no role given), search all
-    if (!user) {
+    } else {
       user = await findUserByEmail(email);
     }
 
@@ -73,7 +86,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({
       token,
-      user: { _id: user._id, name: user.name, email: user.email, role: user.role, courseId: user.courseId || '', course: user.course || '', semester: user.semester || '', status: user.status || 'active', avatar: user.avatar || '' }
+      user: serializeUser(user)
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
