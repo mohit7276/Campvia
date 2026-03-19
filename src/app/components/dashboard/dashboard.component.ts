@@ -88,12 +88,17 @@ export class DashboardComponent implements OnInit {
         });
 
         this.route.queryParams.subscribe(params => {
-            if (params['scan']) {
-                const scanId = String(params['scan']);
+            if (params['scan'] !== undefined || params['qr'] !== undefined) {
+                const scanId = params['scan'] ? String(params['scan']) : '';
                 this.initialScanId = scanId;
-                sessionStorage.setItem(this.pendingScanStorageKey, scanId);
-                if (params['qr']) {
-                    sessionStorage.setItem(this.pendingScanTokenStorageKey, String(params['qr']));
+                if (scanId) {
+                    sessionStorage.setItem(this.pendingScanStorageKey, scanId);
+                }
+                const scanToken = params['qr'] ? String(params['qr']) : (params['token'] ? String(params['token']) : '');
+                if (scanToken) {
+                    sessionStorage.setItem(this.pendingScanTokenStorageKey, scanToken);
+                } else {
+                    sessionStorage.removeItem(this.pendingScanTokenStorageKey);
                 }
                 this.activeSection = 'timetable';
                 return;

@@ -127,9 +127,10 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
 
     // Scanner State
     isScannerOpen = false;
-    scanStatus: 'idle' | 'scanning' | 'success' | 'error' | 'location-denied' = 'idle';
+    scanStatus: 'idle' | 'scanning' | 'ready' | 'success' | 'error' | 'location-denied' = 'idle';
     errorMessage = '';
     userLocation: { lat: number, lng: number } | null = null;
+    pendingScanLecture: { lectureId: string; subject: string; date: string; time: string; instructor: string; qrToken: string } | null = null;
     private readonly pendingScanStorageKey = 'pending_scan_lecture_id';
     private readonly pendingScanTokenStorageKey = 'pending_scan_qr_token';
 
@@ -342,19 +343,19 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     handleStartScan() {
         this.isScannerOpen = true;
         this.errorMessage = '';
+        this.pendingScanLecture = null;
 
-        const lectureId = this.resolveLectureId();
+        const lectureId = this.resolveLectureId() || '';
         const qrToken = this.resolveQrToken();
 
-        if (!lectureId || !qrToken) {
-            this.scanStatus = 'error';
-            this.errorMessage = "Please scan the latest attendance QR code shared by your instructor.";
-            this.cdr.detectChanges();
-            return;
+        if (lectureId) {
+            sessionStorage.setItem(this.pendingScanStorageKey, lectureId);
         }
-
-        sessionStorage.setItem(this.pendingScanStorageKey, lectureId);
-        sessionStorage.setItem(this.pendingScanTokenStorageKey, qrToken);
+        if (qrToken) {
+            sessionStorage.setItem(this.pendingScanTokenStorageKey, qrToken);
+        } else {
+            sessionStorage.removeItem(this.pendingScanTokenStorageKey);
+        }
 
         this.scanStatus = 'scanning';
 
@@ -386,18 +387,50 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     simulateScan() {
         if (!this.userLocation) return;
 
-        const activeSession = this.dataService.activeQrSession();
-        const lectureId = this.resolveLectureId();
+        const lectureId = this.resolveLectureId() || '';
         const qrToken = this.resolveQrToken();
 
-        if (!lectureId || !qrToken) {
+        if (!lectureId && !qrToken) {
             this.scanStatus = 'error';
-            this.errorMessage = 'Missing secure QR data. Please rescan the QR code.';
+            this.errorMessage = 'Scan a valid QR code first to load lecture details.';
             this.cdr.detectChanges();
             return;
         }
 
-        this.api.markAttendance(lectureId, this.userLocation, qrToken).subscribe({
+        this.api.previewAttendanceScan(lectureId, qrToken || '').subscribe({
+            next: (preview) => {
+                this.pendingScanLecture = {
+                    lectureId: preview?.lectureId || lectureId,
+                    subject: preview?.subject || 'Lecture',
+                    date: preview?.date || this.todayStr,
+                    time: preview?.time || '--:--',
+                    instructor: preview?.instructor || '',
+                    qrToken: preview?.qrToken || qrToken || ''
+                };
+                this.scanStatus = 'ready';
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                this.scanStatus = 'error';
+                this.errorMessage = err?.error?.message || 'Unable to verify lecture details from QR.';
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    confirmMarkPresent() {
+        if (!this.userLocation || !this.pendingScanLecture) {
+            this.scanStatus = 'error';
+            this.errorMessage = 'Please scan and verify lecture details before marking present.';
+            this.cdr.detectChanges();
+            return;
+        }
+
+        const activeSession = this.dataService.activeQrSession();
+        const lectureId = this.pendingScanLecture.lectureId || '';
+        const qrToken = this.pendingScanLecture.qrToken || '';
+
+        this.api.markAttendance(lectureId, this.userLocation, qrToken || '').subscribe({
             next: (attendance) => {
                 this.scanStatus = 'success';
                 const newRecord: AttendanceRecord = {
@@ -431,6 +464,13 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     }
 
     private resolveLectureId(): string | null {
+        if (typeof window !== 'undefined') {
+            const scanFromUrl = new URLSearchParams(window.location.search).get('scan');
+            if (scanFromUrl) {
+                return scanFromUrl;
+            }
+        }
+
         const activeSession = this.dataService.activeQrSession();
         if (activeSession?.lectureId) {
             return activeSession.lectureId;
@@ -445,17 +485,25 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
             return persistedScanId;
         }
 
-        if (typeof window !== 'undefined') {
-            const scanFromUrl = new URLSearchParams(window.location.search).get('scan');
-            if (scanFromUrl) {
-                return scanFromUrl;
-            }
-        }
-
         return null;
     }
 
     private resolveQrToken(): string | null {
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const tokenFromUrl = params.get('qr') || params.get('token');
+
+            // If the current URL represents a scan intent, trust only the token present in that URL.
+            // This prevents stale sessionStorage tokens from causing false mismatch errors.
+            if (params.has('scan') || tokenFromUrl) {
+                return tokenFromUrl ? tokenFromUrl : null;
+            }
+
+            if (tokenFromUrl) {
+                return tokenFromUrl;
+            }
+        }
+
         const activeSession = this.dataService.activeQrSession();
         if (activeSession?.sessionToken) {
             return activeSession.sessionToken;
@@ -464,13 +512,6 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
         const persistedToken = sessionStorage.getItem(this.pendingScanTokenStorageKey);
         if (persistedToken) {
             return persistedToken;
-        }
-
-        if (typeof window !== 'undefined') {
-            const tokenFromUrl = new URLSearchParams(window.location.search).get('qr');
-            if (tokenFromUrl) {
-                return tokenFromUrl;
-            }
         }
 
         return null;

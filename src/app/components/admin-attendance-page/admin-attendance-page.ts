@@ -100,7 +100,7 @@ export class AdminAttendancePage implements OnInit {
   formCourseId = 'C01';
   formSubject = '';
   formDate = this.todayStr;
-  formTime = '10:00 AM';
+  formTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   formInstructor = '';
 
   editingLecture: Lecture | null = null;
@@ -188,7 +188,7 @@ export class AdminAttendancePage implements OnInit {
     this.formCourseId = this.selectedCourseId;
     this.formSubject = this.availableSubjects.length > 0 ? this.availableSubjects[0] : '';
     this.formDate = this.todayStr;
-    this.formTime = '10:00 AM';
+    this.formTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     this.formInstructor = '';
     this.isLectureModalOpen = true;
   }

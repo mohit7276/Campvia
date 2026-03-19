@@ -122,8 +122,8 @@ export class AdminTimetablePage implements OnInit {
   saving = false;
   formCourseId = 'C01';
   formDayOfWeek = 1;
-  formTime = '09:00 AM';
-  formEndTime = '10:30 AM';
+  formTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  formEndTime = new Date(new Date().getTime() + 60 * 60 * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   formSubject = '';
   formRoom = 'Room 101';
   formType: 'lecture' | 'lab' | 'seminar' | 'workshop' = 'lecture';
@@ -143,7 +143,7 @@ export class AdminTimetablePage implements OnInit {
   lectureFormCourseId = 'C01';
   lectureFormSubject = '';
   lectureFormDate = '';
-  lectureFormTime = '10:00 AM';
+  lectureFormTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   lectureFormInstructor = '';
 
   // Attendance Modal
@@ -284,8 +284,8 @@ export class AdminTimetablePage implements OnInit {
     this.formCourseId = this.selectedCourseId;
     this.formDayOfWeek = this.selectedDate.getDay();
     this.formSubject = this.availableSubjects.length > 0 ? this.availableSubjects[0] : '';
-    this.formTime = '09:00 AM';
-    this.formEndTime = '10:00 AM';
+    this.formTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    this.formEndTime = new Date(new Date().getTime() + 60 * 60 * 1000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     this.formRoom = '';
     this.formType = 'lecture';
     this.formFaculty = '';
@@ -507,7 +507,7 @@ export class AdminTimetablePage implements OnInit {
     this.lectureFormCourseId = this.selectedCourseId;
     this.lectureFormSubject = this.lectureAvailableSubjects.length > 0 ? this.lectureAvailableSubjects[0] : '';
     this.lectureFormDate = this.todayStr;
-    this.lectureFormTime = '10:00 AM';
+    this.lectureFormTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     this.lectureFormInstructor = '';
     this.isLectureModalOpen = true;
   }

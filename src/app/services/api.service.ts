@@ -90,6 +90,10 @@ export class ApiService {
     return this.http.post(`${this.baseUrl}/student/attendance/mark`, { lectureId, location, qrToken }, { headers: this.getHeaders() });
   }
 
+  previewAttendanceScan(lectureId: string, qrToken: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/student/attendance/scan-preview`, { lectureId, qrToken }, { headers: this.getHeaders() });
+  }
+
   getFees(): Observable<any> {
     return this.get$(`${this.baseUrl}/student/fees`);
   }

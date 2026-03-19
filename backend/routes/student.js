@@ -21,6 +21,30 @@ function getStudentCourseId(req) {
   return (req.user && req.user.courseId) ? req.user.courseId : '';
 }
 
+async function resolveLectureForScan({ requestedLectureId, requestedQrToken, studentCourseId }) {
+  let lecture = null;
+
+  if (requestedLectureId && mongoose.isValidObjectId(requestedLectureId)) {
+    lecture = await Lecture.findById(requestedLectureId);
+  }
+
+  if (!lecture && requestedQrToken) {
+    lecture = await Lecture.findOne({
+      'qrSession.active': true,
+      'qrSession.token': requestedQrToken
+    });
+  }
+
+  if (!lecture && !requestedLectureId && !requestedQrToken && studentCourseId) {
+    lecture = await Lecture.findOne({
+      courseId: studentCourseId,
+      'qrSession.active': true,
+    }).sort({ 'qrSession.startedAt': -1, updatedAt: -1 });
+  }
+
+  return lecture;
+}
+
 // ===== ASSIGNMENTS =====
 router.get('/assignments', async (req, res) => {
   try {
@@ -188,29 +212,66 @@ router.get('/attendance/stats', async (req, res) => {
   }
 });
 
+router.post('/attendance/scan-preview', async (req, res) => {
+  try {
+    const { lectureId, qrToken } = req.body;
+    const requestedLectureId = typeof lectureId === 'string' ? lectureId.trim() : '';
+    const requestedQrToken = typeof qrToken === 'string' ? qrToken.trim() : '';
+    const studentCourseId = getStudentCourseId(req);
+
+    const lecture = await resolveLectureForScan({
+      requestedLectureId,
+      requestedQrToken,
+      studentCourseId,
+    });
+
+    if (!lecture) return res.status(404).json({ message: 'Lecture not found or session has ended.' });
+
+    if (studentCourseId && lecture.courseId && lecture.courseId !== studentCourseId) {
+      return res.status(403).json({ message: 'Access denied: lecture does not belong to your course' });
+    }
+
+    if (!lecture.qrSession || !lecture.qrSession.active) {
+      return res.status(400).json({ message: 'No active attendance session found' });
+    }
+
+    res.json({
+      lectureId: lecture._id,
+      subject: lecture.subject,
+      date: lecture.date,
+      time: lecture.time,
+      instructor: lecture.instructor || '',
+      courseId: lecture.courseId || '',
+      qrToken: requestedQrToken || lecture.qrSession.token || '',
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Mark attendance (QR scan)
 router.post('/attendance/mark', async (req, res) => {
   try {
     const { lectureId, location, qrToken } = req.body;
     const requestedLectureId = typeof lectureId === 'string' ? lectureId.trim() : '';
     const requestedQrToken = typeof qrToken === 'string' ? qrToken.trim() : '';
+    const studentCourseId = getStudentCourseId(req);
 
-    if (!requestedLectureId || !mongoose.isValidObjectId(requestedLectureId)) {
-      return res.status(400).json({ message: 'Invalid QR lecture reference. Please scan the QR code again.' });
+    const lecture = await resolveLectureForScan({
+      requestedLectureId,
+      requestedQrToken,
+      studentCourseId,
+    });
+
+    if (!lecture) return res.status(404).json({ message: 'Lecture not found or session has ended.' });
+
+    // Ensure student can only mark attendance for their own course sessions.
+    if (studentCourseId && lecture.courseId && lecture.courseId !== studentCourseId) {
+      return res.status(403).json({ message: 'Access denied: lecture does not belong to your course' });
     }
 
-    if (!requestedQrToken) {
-      return res.status(400).json({ message: 'Invalid QR session token. Please scan the QR code again.' });
-    }
-
-    const lecture = await Lecture.findById(requestedLectureId);
-
-    if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
     if (!lecture.qrSession || !lecture.qrSession.active) {
       return res.status(400).json({ message: 'No active attendance session found' });
-    }
-    if (lecture.qrSession.token !== requestedQrToken) {
-      return res.status(400).json({ message: 'QR session mismatch. Please scan the latest QR code.' });
     }
 
     const markTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });

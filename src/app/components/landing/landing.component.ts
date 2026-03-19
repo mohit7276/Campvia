@@ -51,20 +51,27 @@ export class LandingComponent implements OnInit {
     ngOnInit() {
         this.checkScroll();
         this.route.queryParams.subscribe(params => {
-            if (params['scan']) {
-                const scanId = String(params['scan']);
-                const token = params['qr'] ? String(params['qr']) : '';
-                this.scanLectureId = scanId;
+            if (params['scan'] !== undefined || params['qr'] !== undefined) {
+                const scanId = params['scan'] ? String(params['scan']) : '';
+                const token = params['qr'] ? String(params['qr']) : (params['token'] ? String(params['token']) : '');
+                this.scanLectureId = scanId || null;
                 this.scanToken = token || null;
-                sessionStorage.setItem(this.pendingScanStorageKey, scanId);
+                if (scanId) {
+                    sessionStorage.setItem(this.pendingScanStorageKey, scanId);
+                } else {
+                    sessionStorage.removeItem(this.pendingScanStorageKey);
+                }
                 if (token) {
                     sessionStorage.setItem(this.pendingScanTokenStorageKey, token);
+                } else {
+                    sessionStorage.removeItem(this.pendingScanTokenStorageKey);
                 }
                 // Force open login if there's a scan intent and not logged in
                 if (!this.authService.isLoggedIn()) {
                     this.openAuth('login');
                 } else if (this.authService.currentUser()?.role === 'student') {
-                    const queryParams: Record<string, string> = { scan: this.scanLectureId };
+                    const queryParams: Record<string, string> = {};
+                    if (this.scanLectureId) queryParams['scan'] = this.scanLectureId;
                     if (this.scanToken) queryParams['qr'] = this.scanToken;
                     this.router.navigate(['/dashboard'], { queryParams });
                 }
