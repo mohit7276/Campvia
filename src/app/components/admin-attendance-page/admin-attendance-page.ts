@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, Plus, Calendar, Edit2, Trash2, CheckCircle, XCircle, Users, BookOpen, Clock, X, Search, ChevronLeft, QrCode } from 'lucide-angular';
+import { LucideAngularModule, Plus, Calendar, Edit2, Trash2, CheckCircle, XCircle, Users, BookOpen, Clock, X, Search, ChevronLeft, Send } from 'lucide-angular';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { DataService, Course } from '../../services/data.service';
 import { ApiService } from '../../services/api.service';
@@ -62,7 +62,7 @@ export class AdminAttendancePage implements OnInit {
   readonly X = X;
   readonly Search = Search;
   readonly ChevronLeft = ChevronLeft;
-  readonly QrCode = QrCode;
+  readonly Send = Send;
 
   constructor(private dataService: DataService, private cdr: ChangeDetectorRef) { }
 
@@ -168,7 +168,7 @@ export class AdminAttendancePage implements OnInit {
     this.selectedSubject = sub;
   }
 
-  openSubjectQrModal(subject: string, event?: Event) {
+  openSubjectPublishModal(subject: string, event?: Event) {
     if (event) event.stopPropagation();
     const syntheticLecture: Lecture = {
       id: 'subject-' + subject,
@@ -179,7 +179,7 @@ export class AdminAttendancePage implements OnInit {
       instructor: 'Various',
       attendance: []
     };
-    this.openQrModal(syntheticLecture, event);
+    this.openPublishModal(syntheticLecture, event);
   }
 
   openAddLectureModal() {
@@ -292,8 +292,8 @@ export class AdminAttendancePage implements OnInit {
     this.editingLecture = null;
   }
 
-  // QR Code Logic
-  openQrModal(lecture: Lecture, event?: Event) {
+  // Publish Attendance Logic
+  openPublishModal(lecture: Lecture, event?: Event) {
     if (event) event.stopPropagation();
     this.currentQrLecture = lecture;
     this.isQrModalOpen = true;
@@ -310,31 +310,20 @@ export class AdminAttendancePage implements OnInit {
         return;
       }
 
-      this.api.startQrSession(lecture.id, { lat, lng }).subscribe({
+      this.api.publishAttendance(lecture.id, { lat, lng }).subscribe({
         next: (res: any) => {
-          const sessionToken = res?.sessionToken || '';
-          if (!sessionToken) {
-            this.qrStatus = 'error';
-            this.qrErrorMessage = 'Secure QR token missing. Please try again.';
-            this.cdr.detectChanges();
-            return;
-          }
-          const origin = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin : '';
-          this.qrScanUrl = origin
-            ? `${origin}/?scan=${encodeURIComponent(lecture.id)}&qr=${encodeURIComponent(sessionToken)}`
-            : `/?scan=${encodeURIComponent(lecture.id)}&qr=${encodeURIComponent(sessionToken)}`;
+          this.qrScanUrl = '';
           this.qrStatus = 'ready';
           this.dataService.startQrSession({
             lectureId: lecture.id,
             subject: lecture.subject,
-            location: { lat, lng },
-            sessionToken
+            location: { lat, lng }
           });
           this.cdr.detectChanges();
         },
         error: (err) => {
           this.qrStatus = 'error';
-          this.qrErrorMessage = err?.error?.message || 'Unable to start QR session.';
+          this.qrErrorMessage = err?.error?.message || 'Unable to publish attendance.';
           this.cdr.detectChanges();
         }
       });
@@ -387,7 +376,7 @@ export class AdminAttendancePage implements OnInit {
     this.qrScanUrl = '';
     this.dataService.stopQrSession();
     if (lectureId && !lectureId.startsWith('subject-')) {
-      this.api.stopQrSession(lectureId).subscribe({ error: () => { } });
+      this.api.stopPublishedAttendance(lectureId).subscribe({ error: () => { } });
     }
     this.cdr.detectChanges();
   }

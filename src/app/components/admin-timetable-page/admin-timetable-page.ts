@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, Clock, MapPin, User, ChevronLeft, ChevronRight, Calendar, RotateCcw, X, GraduationCap, Users, Bookmark, Edit2, Trash2, Plus, XCircle, CheckCircle, BookOpen, Search, QrCode } from 'lucide-angular';
+import { LucideAngularModule, Clock, MapPin, User, ChevronLeft, ChevronRight, Calendar, RotateCcw, X, GraduationCap, Users, Bookmark, Edit2, Trash2, Plus, XCircle, CheckCircle, BookOpen, Search, Send } from 'lucide-angular';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 import { DataService, Course } from '../../services/data.service';
 import { ApiService } from '../../services/api.service';
@@ -93,7 +93,7 @@ export class AdminTimetablePage implements OnInit {
   readonly CheckCircle = CheckCircle;
   readonly BookOpen = BookOpen;
   readonly Search = Search;
-  readonly QrCode = QrCode;
+  readonly Send = Send;
 
   constructor(private dataService: DataService, private datePipe: DatePipe) { }
 
@@ -704,7 +704,7 @@ export class AdminTimetablePage implements OnInit {
     return { total, present, absent };
   }
 
-  openSubjectQrModal(subject: string, event?: Event) {
+  openSubjectPublishModal(subject: string, event?: Event) {
     if (event) event.stopPropagation();
     const syntheticLecture: Lecture = {
       id: 'subject-' + subject,
@@ -715,10 +715,10 @@ export class AdminTimetablePage implements OnInit {
       instructor: 'Various',
       attendance: []
     };
-    this.openQrModal(syntheticLecture, event);
+    this.openPublishModal(syntheticLecture, event);
   }
 
-  openQrModal(lecture: Lecture, event?: Event) {
+  openPublishModal(lecture: Lecture, event?: Event) {
     if (event) event.stopPropagation();
     this.currentQrLecture = lecture;
     this.isQrModalOpen = true;
@@ -729,31 +729,20 @@ export class AdminTimetablePage implements OnInit {
 
     const handleSuccess = (lat: number, lng: number) => {
       const startSessionForLecture = (lectureId: string, lectureSubject: string) => {
-        this.api.startQrSession(lectureId, { lat, lng }).subscribe({
+        this.api.publishAttendance(lectureId, { lat, lng }).subscribe({
           next: (res: any) => {
-            const sessionToken = res?.sessionToken || '';
-            if (!sessionToken) {
-              this.qrStatus = 'error';
-              this.qrErrorMessage = 'Secure QR token missing. Please try again.';
-              this.cdr.detectChanges();
-              return;
-            }
-            const origin = (typeof window !== 'undefined' && window.location?.origin) ? window.location.origin : '';
-            this.qrScanUrl = origin
-              ? `${origin}/?scan=${encodeURIComponent(lectureId)}&qr=${encodeURIComponent(sessionToken)}`
-              : `/?scan=${encodeURIComponent(lectureId)}&qr=${encodeURIComponent(sessionToken)}`;
+            this.qrScanUrl = '';
             this.qrStatus = 'ready';
             this.dataService.startQrSession({
               lectureId,
               subject: lectureSubject,
-              location: { lat, lng },
-              sessionToken
+              location: { lat, lng }
             });
             this.cdr.detectChanges();
           },
           error: (err) => {
             this.qrStatus = 'error';
-            this.qrErrorMessage = err?.error?.message || 'Unable to start QR session.';
+            this.qrErrorMessage = err?.error?.message || 'Unable to publish attendance.';
             this.cdr.detectChanges();
           }
         });
@@ -775,7 +764,7 @@ export class AdminTimetablePage implements OnInit {
             const newId = created?._id || created?.id;
             if (!newId) {
               this.qrStatus = 'error';
-              this.qrErrorMessage = 'Lecture created but QR session could not start.';
+              this.qrErrorMessage = 'Lecture created but attendance could not be published.';
               this.cdr.detectChanges();
               return;
             }
@@ -794,7 +783,7 @@ export class AdminTimetablePage implements OnInit {
           },
           error: (err) => {
             this.qrStatus = 'error';
-            this.qrErrorMessage = err?.error?.message || 'Unable to create lecture for QR session.';
+            this.qrErrorMessage = err?.error?.message || 'Unable to create lecture for published attendance.';
             this.cdr.detectChanges();
           }
         });
@@ -849,7 +838,7 @@ export class AdminTimetablePage implements OnInit {
     this.qrScanUrl = '';
     this.dataService.stopQrSession();
     if (lectureId && !lectureId.startsWith('subject-') && !lectureId.startsWith('sched-')) {
-      this.api.stopQrSession(lectureId).subscribe({ error: () => { } });
+      this.api.stopPublishedAttendance(lectureId).subscribe({ error: () => { } });
     }
     this.cdr.detectChanges();
   }

@@ -1,11 +1,11 @@
 import { Component, Input, OnInit, OnChanges, AfterViewInit, inject, ChangeDetectorRef, ElementRef, QueryList, ViewChildren } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LucideAngularModule, Clock, MapPin, User, ChevronLeft, ChevronRight, Calendar, RotateCcw, X, GraduationCap, Users, Bookmark, QrCode, CheckCircle, XCircle, PieChart, BookOpen, AlertCircle, Camera, Navigation, ShieldCheck, History, TrendingUp, Crosshair, ArrowRight } from 'lucide-angular';
+import { LucideAngularModule, Clock, MapPin, User, ChevronLeft, ChevronRight, Calendar, RotateCcw, X, GraduationCap, Users, Bookmark, CheckCircle, XCircle, PieChart, BookOpen, AlertCircle, Camera, Navigation, ShieldCheck, History, TrendingUp, Crosshair, ArrowRight } from 'lucide-angular';
 import { ScheduleItem, UserTodo, AttendanceRecord } from '../../types';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 import { ApiService } from '../../services/api.service';
-import { DataService, QrSession } from '../../services/data.service';
+import { DataService } from '../../services/data.service';
 
 // Permanent Campus Location
 const CAMPUS_LOCATION = { lat: 23.0258, lng: 72.5873 };
@@ -82,7 +82,6 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     readonly GraduationCap = GraduationCap;
     readonly Users = Users;
     readonly Bookmark = Bookmark;
-    readonly QrCode = QrCode;
     readonly CheckCircle = CheckCircle;
     readonly XCircle = XCircle;
     readonly PieChart = PieChart;
@@ -127,12 +126,10 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
 
     // Scanner State
     isScannerOpen = false;
-    scanStatus: 'idle' | 'scanning' | 'ready' | 'success' | 'error' | 'location-denied' = 'idle';
+    scanStatus: 'idle' | 'finding' | 'ready' | 'success' | 'error' | 'location-denied' = 'idle';
     errorMessage = '';
-    userLocation: { lat: number, lng: number } | null = null;
-    pendingScanLecture: { lectureId: string; subject: string; date: string; time: string; instructor: string; qrToken: string } | null = null;
-    private readonly pendingScanStorageKey = 'pending_scan_lecture_id';
-    private readonly pendingScanTokenStorageKey = 'pending_scan_qr_token';
+    userLocation: { lat: number, lng: number, accuracy?: number } | null = null;
+    pendingScanLecture: { lectureId: string; subject: string; date: string; time: string; instructor: string } | null = null;
 
     ngOnInit() {
         this.updateDateWindow();
@@ -141,18 +138,6 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
         this.loadAttendance();
         this.loadTodaySchedule();
 
-        if (this.initialScanId) {
-            this.scanStatus = 'idle';
-            const scanFromUrl = typeof window !== 'undefined'
-                ? new URLSearchParams(window.location.search).get('scan')
-                : null;
-            const tokenFromUrl = typeof window !== 'undefined'
-                ? new URLSearchParams(window.location.search).get('qr')
-                : null;
-            if (scanFromUrl && tokenFromUrl) {
-                setTimeout(() => this.handleStartScan(), 300);
-            }
-        }
     }
 
     ngOnChanges() {
@@ -345,25 +330,17 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
         this.errorMessage = '';
         this.pendingScanLecture = null;
 
-        const lectureId = this.resolveLectureId() || '';
-        const qrToken = this.resolveQrToken();
-
-        if (lectureId) {
-            sessionStorage.setItem(this.pendingScanStorageKey, lectureId);
-        }
-        if (qrToken) {
-            sessionStorage.setItem(this.pendingScanTokenStorageKey, qrToken);
-        } else {
-            sessionStorage.removeItem(this.pendingScanTokenStorageKey);
-        }
-
-        this.scanStatus = 'scanning';
+        this.scanStatus = 'finding';
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    this.userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
-                    setTimeout(() => this.simulateScan(), 2000);
+                    this.userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    };
+                    setTimeout(() => this.simulateScan(), 1000);
                     this.cdr.detectChanges();
                 },
                 (error) => {
@@ -387,32 +364,21 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     simulateScan() {
         if (!this.userLocation) return;
 
-        const lectureId = this.resolveLectureId() || '';
-        const qrToken = this.resolveQrToken();
-
-        if (!lectureId && !qrToken) {
-            this.scanStatus = 'error';
-            this.errorMessage = 'Scan a valid QR code first to load lecture details.';
-            this.cdr.detectChanges();
-            return;
-        }
-
-        this.api.previewAttendanceScan(lectureId, qrToken || '').subscribe({
+        this.api.previewAttendanceScan().subscribe({
             next: (preview) => {
                 this.pendingScanLecture = {
-                    lectureId: preview?.lectureId || lectureId,
+                    lectureId: preview?.lectureId || '',
                     subject: preview?.subject || 'Lecture',
                     date: preview?.date || this.todayStr,
                     time: preview?.time || '--:--',
-                    instructor: preview?.instructor || '',
-                    qrToken: preview?.qrToken || qrToken || ''
+                    instructor: preview?.instructor || ''
                 };
                 this.scanStatus = 'ready';
                 this.cdr.detectChanges();
             },
             error: (err) => {
                 this.scanStatus = 'error';
-                this.errorMessage = err?.error?.message || 'Unable to verify lecture details from QR.';
+                this.errorMessage = err?.error?.message || 'Unable to find an active published lecture right now.';
                 this.cdr.detectChanges();
             }
         });
@@ -421,16 +387,15 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     confirmMarkPresent() {
         if (!this.userLocation || !this.pendingScanLecture) {
             this.scanStatus = 'error';
-            this.errorMessage = 'Please scan and verify lecture details before marking present.';
+            this.errorMessage = 'Please find and verify lecture details before marking present.';
             this.cdr.detectChanges();
             return;
         }
 
         const activeSession = this.dataService.activeQrSession();
         const lectureId = this.pendingScanLecture.lectureId || '';
-        const qrToken = this.pendingScanLecture.qrToken || '';
 
-        this.api.markAttendance(lectureId, this.userLocation, qrToken || '').subscribe({
+        this.api.markAttendance(lectureId, this.userLocation).subscribe({
             next: (attendance) => {
                 this.scanStatus = 'success';
                 const newRecord: AttendanceRecord = {
@@ -447,8 +412,6 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
                     this.calculateSubjectSummaries();
                     this.isScannerOpen = false;
                     this.scanStatus = 'idle';
-                    sessionStorage.removeItem(this.pendingScanStorageKey);
-                    sessionStorage.removeItem(this.pendingScanTokenStorageKey);
                     // Refresh schedule to reflect new attendance
                     this.timetableCache = {};
                     this.updateSchedule();
@@ -461,60 +424,6 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
                 this.cdr.detectChanges();
             }
         });
-    }
-
-    private resolveLectureId(): string | null {
-        if (typeof window !== 'undefined') {
-            const scanFromUrl = new URLSearchParams(window.location.search).get('scan');
-            if (scanFromUrl) {
-                return scanFromUrl;
-            }
-        }
-
-        const activeSession = this.dataService.activeQrSession();
-        if (activeSession?.lectureId) {
-            return activeSession.lectureId;
-        }
-
-        if (this.initialScanId) {
-            return this.initialScanId;
-        }
-
-        const persistedScanId = sessionStorage.getItem(this.pendingScanStorageKey);
-        if (persistedScanId) {
-            return persistedScanId;
-        }
-
-        return null;
-    }
-
-    private resolveQrToken(): string | null {
-        if (typeof window !== 'undefined') {
-            const params = new URLSearchParams(window.location.search);
-            const tokenFromUrl = params.get('qr') || params.get('token');
-
-            // If the current URL represents a scan intent, trust only the token present in that URL.
-            // This prevents stale sessionStorage tokens from causing false mismatch errors.
-            if (params.has('scan') || tokenFromUrl) {
-                return tokenFromUrl ? tokenFromUrl : null;
-            }
-
-            if (tokenFromUrl) {
-                return tokenFromUrl;
-            }
-        }
-
-        const activeSession = this.dataService.activeQrSession();
-        if (activeSession?.sessionToken) {
-            return activeSession.sessionToken;
-        }
-
-        const persistedToken = sessionStorage.getItem(this.pendingScanTokenStorageKey);
-        if (persistedToken) {
-            return persistedToken;
-        }
-
-        return null;
     }
 
     calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {

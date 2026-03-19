@@ -85,12 +85,12 @@ export class ApiService {
     return this.get$(`${this.baseUrl}/student/attendance/stats`);
   }
 
-  markAttendance(lectureId: string, location: any, qrToken: string): Observable<any> {
+  markAttendance(lectureId: string, location: any, qrToken: string = ''): Observable<any> {
     this.bust(`${this.baseUrl}/student/attendance`);
     return this.http.post(`${this.baseUrl}/student/attendance/mark`, { lectureId, location, qrToken }, { headers: this.getHeaders() });
   }
 
-  previewAttendanceScan(lectureId: string, qrToken: string): Observable<any> {
+  previewAttendanceScan(lectureId: string = '', qrToken: string = ''): Observable<any> {
     return this.http.post(`${this.baseUrl}/student/attendance/scan-preview`, { lectureId, qrToken }, { headers: this.getHeaders() });
   }
 
@@ -406,12 +406,20 @@ export class ApiService {
     return this.http.put(`${this.baseUrl}/admin/lectures/${id}/attendance`, { attendance }, { headers: this.getHeaders() });
   }
 
+  publishAttendance(lectureId: string, location: any): Observable<any> {
+    return this.http.post(`${this.baseUrl}/admin/lectures/${lectureId}/attendance/publish`, { location }, { headers: this.getHeaders() });
+  }
+
+  stopPublishedAttendance(lectureId: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/admin/lectures/${lectureId}/attendance/stop`, {}, { headers: this.getHeaders() });
+  }
+
   startQrSession(lectureId: string, location: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/admin/lectures/${lectureId}/qr-session/start`, { location }, { headers: this.getHeaders() });
+    return this.publishAttendance(lectureId, location);
   }
 
   stopQrSession(lectureId: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/admin/lectures/${lectureId}/qr-session/stop`, {}, { headers: this.getHeaders() });
+    return this.stopPublishedAttendance(lectureId);
   }
 
   // ===== ADMIN EXAMS =====

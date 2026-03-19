@@ -21,6 +21,25 @@ function getStudentCourseId(req) {
   return (req.user && req.user.courseId) ? req.user.courseId : '';
 }
 
+function toNumberOrNaN(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function calculateDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371e3;
+  const phi1 = lat1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+  const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) *
+    Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 async function resolveLectureForScan({ requestedLectureId, requestedQrToken, studentCourseId }) {
   let lecture = null;
 
@@ -272,6 +291,31 @@ router.post('/attendance/mark', async (req, res) => {
 
     if (!lecture.qrSession || !lecture.qrSession.active) {
       return res.status(400).json({ message: 'No active attendance session found' });
+    }
+
+    const publishedLat = toNumberOrNaN(lecture?.qrSession?.location?.lat);
+    const publishedLng = toNumberOrNaN(lecture?.qrSession?.location?.lng);
+    const userLat = toNumberOrNaN(location?.lat);
+    const userLng = toNumberOrNaN(location?.lng);
+    const userAccuracy = toNumberOrNaN(location?.accuracy);
+
+    if (Number.isNaN(publishedLat) || Number.isNaN(publishedLng)) {
+      return res.status(400).json({ message: 'Attendance location is not published for this lecture.' });
+    }
+
+    if (Number.isNaN(userLat) || Number.isNaN(userLng)) {
+      return res.status(400).json({ message: 'Your live location is required to mark attendance.' });
+    }
+
+    const distanceMeters = calculateDistanceMeters(userLat, userLng, publishedLat, publishedLng);
+    const adaptiveRadiusMeters = Number.isNaN(userAccuracy)
+      ? 50
+      : Math.max(50, Math.min(120, Math.round(userAccuracy + 20)));
+
+    if (distanceMeters > adaptiveRadiusMeters) {
+      return res.status(403).json({
+        message: `You are not within ${adaptiveRadiusMeters} meters of the published attendance location.`
+      });
     }
 
     const markTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });

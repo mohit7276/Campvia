@@ -1,12 +1,54 @@
 const router = require('express').Router();
 const mongoose = require('mongoose');
-const crypto = require('crypto');
 const Lecture = require('../../models/Lecture');
 const Attendance = require('../../models/Attendance');
 const Student = require('../../models/Student');
 const { auth, adminOnly } = require('../../middleware/auth');
 
 router.use(auth, adminOnly);
+
+async function publishAttendanceSession(req, res) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid lecture ID for attendance publish' });
+    }
+    const lecture = await Lecture.findById(req.params.id);
+    if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
+
+    const location = req.body.location || { lat: 0, lng: 0 };
+    lecture.qrSession = {
+      active: true,
+      token: '',
+      startedAt: new Date(),
+      location
+    };
+    await lecture.save();
+
+    res.json({
+      lectureId: lecture._id,
+      subject: lecture.subject,
+      location,
+      message: 'Attendance published'
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+async function stopAttendanceSession(req, res) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid lecture ID for attendance stop' });
+    }
+    const lecture = await Lecture.findById(req.params.id);
+    if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
+    lecture.qrSession = { active: false, token: '', startedAt: null, location: { lat: 0, lng: 0 } };
+    await lecture.save();
+    res.json({ message: 'Attendance stopped' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
 
 // Get lectures (filter by courseId, date)
 router.get('/', async (req, res) => {
@@ -105,47 +147,12 @@ router.put('/:id/attendance', async (req, res) => {
   }
 });
 
-// Start QR session
-router.post('/:id/qr-session/start', async (req, res) => {
-  try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(400).json({ message: 'Invalid lecture ID for QR session' });
-    }
-    const lecture = await Lecture.findById(req.params.id);
-    if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
-    const sessionToken = crypto.randomBytes(16).toString('hex');
-    lecture.qrSession = {
-      active: true,
-      token: sessionToken,
-      startedAt: new Date(),
-      location: req.body.location
-    };
-    await lecture.save();
-    res.json({
-      lectureId: lecture._id,
-      subject: lecture.subject,
-      location: req.body.location,
-      sessionToken
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// Publish/Stop attendance session
+router.post('/:id/attendance/publish', publishAttendanceSession);
+router.post('/:id/attendance/stop', stopAttendanceSession);
 
-// Stop QR session
-router.post('/:id/qr-session/stop', async (req, res) => {
-  try {
-    if (!mongoose.isValidObjectId(req.params.id)) {
-      return res.status(400).json({ message: 'Invalid lecture ID for QR session' });
-    }
-    const lecture = await Lecture.findById(req.params.id);
-    if (!lecture) return res.status(404).json({ message: 'Lecture not found' });
-    lecture.qrSession = { active: false, token: '', startedAt: null, location: { lat: 0, lng: 0 } };
-    await lecture.save();
-    res.json({ message: 'QR session stopped' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
+// Backward-compatible aliases for old QR endpoints
+router.post('/:id/qr-session/start', publishAttendanceSession);
+router.post('/:id/qr-session/stop', stopAttendanceSession);
 
 module.exports = router;
