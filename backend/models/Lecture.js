@@ -29,7 +29,8 @@ const lectureSchema = new mongoose.Schema({
     startedAt:{ type: Date, default: null },
     location: {
       lat: { type: Number, default: 0 },
-      lng: { type: Number, default: 0 }
+      lng: { type: Number, default: 0 },
+      accuracy: { type: Number, default: 0 }
     }
   }
 }, { timestamps: true });

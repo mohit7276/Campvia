@@ -295,6 +295,7 @@ router.post('/attendance/mark', async (req, res) => {
 
     const publishedLat = toNumberOrNaN(lecture?.qrSession?.location?.lat);
     const publishedLng = toNumberOrNaN(lecture?.qrSession?.location?.lng);
+    const publishedAccuracy = toNumberOrNaN(lecture?.qrSession?.location?.accuracy);
     const userLat = toNumberOrNaN(location?.lat);
     const userLng = toNumberOrNaN(location?.lng);
     const userAccuracy = toNumberOrNaN(location?.accuracy);
@@ -303,14 +304,21 @@ router.post('/attendance/mark', async (req, res) => {
       return res.status(400).json({ message: 'Attendance location is not published for this lecture.' });
     }
 
+    if (publishedLat === 0 && publishedLng === 0) {
+      return res.status(400).json({ message: 'Attendance location is invalid. Ask faculty to republish attendance from live GPS.' });
+    }
+
     if (Number.isNaN(userLat) || Number.isNaN(userLng)) {
       return res.status(400).json({ message: 'Your live location is required to mark attendance.' });
     }
 
     const distanceMeters = calculateDistanceMeters(userLat, userLng, publishedLat, publishedLng);
-    const adaptiveRadiusMeters = Number.isNaN(userAccuracy)
-      ? 50
-      : Math.max(50, Math.min(120, Math.round(userAccuracy + 20)));
+    const userAccuracyMeters = Number.isNaN(userAccuracy) ? 0 : Math.max(0, Math.round(userAccuracy));
+    const publishedAccuracyMeters = Number.isNaN(publishedAccuracy) ? 0 : Math.max(0, Math.round(publishedAccuracy));
+    const adaptiveRadiusMeters = Math.max(
+      60,
+      Math.min(250, Math.round(userAccuracyMeters + publishedAccuracyMeters + 30))
+    );
 
     if (distanceMeters > adaptiveRadiusMeters) {
       return res.status(403).json({

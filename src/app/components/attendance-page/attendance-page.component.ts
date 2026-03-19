@@ -169,7 +169,7 @@ export class AttendancePageComponent implements OnInit {
                     }
                     this.errorMessage = errorMsg;
                 },
-                { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
             );
         } else {
             this.scanStatus = 'error';

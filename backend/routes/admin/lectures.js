@@ -12,6 +12,11 @@ const {
 
 router.use(auth, adminOrFaculty);
 
+function toNumberOrNaN(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 async function publishAttendanceSession(req, res) {
   try {
     const allowedCourseIds = await getAllowedCourseIds(req);
@@ -24,7 +29,20 @@ async function publishAttendanceSession(req, res) {
       return res.status(403).json({ message: 'Access denied: not your course' });
     }
 
-    const location = req.body.location || { lat: 0, lng: 0 };
+    const lat = toNumberOrNaN(req.body?.location?.lat);
+    const lng = toNumberOrNaN(req.body?.location?.lng);
+    const accuracy = toNumberOrNaN(req.body?.location?.accuracy);
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(400).json({ message: 'Valid live GPS location is required to publish attendance.' });
+    }
+
+    const location = {
+      lat,
+      lng,
+      accuracy: Number.isNaN(accuracy) ? 0 : Math.max(0, Math.round(accuracy))
+    };
+
     lecture.qrSession = {
       active: true,
       token: '',
@@ -56,7 +74,7 @@ async function stopAttendanceSession(req, res) {
       return res.status(403).json({ message: 'Access denied: not your course' });
     }
 
-    lecture.qrSession = { active: false, token: '', startedAt: null, location: { lat: 0, lng: 0 } };
+    lecture.qrSession = { active: false, token: '', startedAt: null, location: { lat: 0, lng: 0, accuracy: 0 } };
     await lecture.save();
     res.json({ message: 'Attendance stopped' });
   } catch (error) {
