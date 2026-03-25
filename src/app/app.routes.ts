@@ -1,14 +1,36 @@
 import { Routes } from '@angular/router';
-import { LandingComponent } from './components/landing/landing.component';
-import { DashboardComponent } from './components/dashboard/dashboard.component';
-import { StudyMaterialWrapperComponent } from './components/study-material-wrapper/study-material-wrapper.component';
-import { AdminDashboardComponent } from './components/admin-dashboard/admin-dashboard.component';
 
 export const routes: Routes = [
-    { path: '', component: LandingComponent },
-    { path: 'dashboard', component: DashboardComponent },
-    { path: 'admin', component: AdminDashboardComponent },
-    { path: 'faculty', component: AdminDashboardComponent },
-    { path: 'study-material', component: StudyMaterialWrapperComponent },
-    { path: '**', redirectTo: '' }
+    {
+        path: '',
+        loadComponent: () =>
+            import('./components/landing/landing.component').then((m) => m.LandingComponent),
+    },
+    {
+        path: 'dashboard',
+        loadComponent: () =>
+            import('./components/dashboard/dashboard.component').then((m) => m.DashboardComponent),
+    },
+    {
+        path: 'admin',
+        loadComponent: () =>
+            import('./components/admin-dashboard/admin-dashboard.component').then(
+                (m) => m.AdminDashboardComponent
+            ),
+    },
+    {
+        path: 'faculty',
+        loadComponent: () =>
+            import('./components/admin-dashboard/admin-dashboard.component').then(
+                (m) => m.AdminDashboardComponent
+            ),
+    },
+    {
+        path: 'study-material',
+        loadComponent: () =>
+            import('./components/study-material-wrapper/study-material-wrapper.component').then(
+                (m) => m.StudyMaterialWrapperComponent
+            ),
+    },
+    { path: '**', redirectTo: '' },
 ];
