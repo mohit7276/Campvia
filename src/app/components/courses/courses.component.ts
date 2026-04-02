@@ -1,6 +1,7 @@
 import { Component, ElementRef, OnInit, OnDestroy, ViewChild, AfterViewInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { COURSES } from '../../constants';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
@@ -26,6 +27,7 @@ interface LandingCourse {
 export class CoursesComponent implements OnInit, OnDestroy, AfterViewInit {
     private api = inject(ApiService);
     private dataService = inject(DataService);
+    private router = inject(Router);
     authService = inject(AuthService);
 
     filter = 'All';
@@ -143,6 +145,10 @@ export class CoursesComponent implements OnInit, OnDestroy, AfterViewInit {
 
     setFilter(cat: string) {
         this.filter = cat;
+    }
+
+    applyNow() {
+        this.router.navigate(['/register']);
     }
 
     get isAdmin(): boolean {

@@ -63,9 +63,9 @@ export class AuthService {
         });
     }
 
-    registerWithApi(name: string, email: string, password: string, role: 'student' | 'faculty' | 'admin' = 'student'): Promise<any> {
+    registerWithApi(name: string, email: string, password: string, role: 'student' | 'faculty' | 'admin' = 'student', courseId = '', courseTitle = ''): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.api.register(name, email, password, role).subscribe({
+            this.api.register(name, email, password, role, courseId, courseTitle).subscribe({
                 next: (res: any) => {
                     sessionStorage.setItem('auth_token', res.token);
                     const user = {

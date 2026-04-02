@@ -23,12 +23,12 @@ function sanitizeImageUrl(url) {
   return url;
 }
 
-// PUBLIC — get all courses that have an image set (landing page display)
+// PUBLIC — get all courses for landing and registration dropdowns.
 router.get('/', async (req, res) => {
   try {
-    const courses = await Course.find({ image: { $exists: true, $ne: '' } }).select(
+    const courses = await Course.find({}).select(
       'courseId name title category duration image description rating'
-    );
+    ).sort({ name: 1, title: 1 });
     // If a course has no explicit title, fall back to the course name
     const result = courses.map(c => ({
       _id: c._id,

@@ -1,0 +1,10 @@
+{
+  "css.customData": [],
+  "css.validate": true,
+  "scss.validate": true,
+  "less.validate": true,
+  "css.lint.unknownAtRules": "ignore",
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
+}

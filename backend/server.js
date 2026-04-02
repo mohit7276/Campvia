@@ -113,6 +113,7 @@ app.use('/api/todos', require('./routes/todos'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/contact', require('./routes/contact'));
 app.use('/api/landing/courses', require('./routes/landingCourses'));
+app.use('/api/public/courses', require('./routes/publicCourses'));
 
 // Root route for uptime checks and quick browser verification.
 app.get('/', (req, res) => {

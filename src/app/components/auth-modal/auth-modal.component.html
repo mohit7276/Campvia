@@ -74,6 +74,20 @@
                         class="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm" />
                 </div>
 
+                <div *ngIf="mode === 'register'" class="animate-[fadeIn_0.2s_ease-out]">
+                    <label class="block text-slate-600 font-bold text-[9px] uppercase tracking-widest mb-1 ml-1">Course</label>
+                    <select name="courseId" [(ngModel)]="selectedCourseId" required
+                        class="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all text-sm">
+                        <option value="">Select your course</option>
+                        <option *ngFor="let course of courseOptions" [value]="course.courseId">
+                            {{ course.title || course.name }}{{ course.courseId ? ' (' + course.courseId + ')' : '' }}
+                        </option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1">
+                        Choose from the existing course list only.
+                    </p>
+                </div>
+
                 <div>
                     <label class="block text-slate-600 font-bold text-[9px] uppercase tracking-widest mb-1 ml-1">
                         Portal ID / Email
@@ -111,32 +125,6 @@
                     </ng-template>
                 </button>
             </form>
-
-            <div class="mt-6 md:mt-8">
-                <div class="relative mb-5">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t border-slate-100"></div>
-                    </div>
-                    <div class="relative flex justify-center text-[9px]">
-                        <span class="px-3 bg-white text-slate-400 uppercase tracking-widest">Or login with</span>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <button
-                        class="flex items-center justify-center py-2.5 border border-slate-100 rounded-xl hover:bg-slate-50 transition-all">
-                        <img src="https://www.svgrepo.com/show/475656/google-color.svg" class="w-4 h-4 mr-2"
-                            alt="Google" />
-                        <span class="text-[10px] font-bold text-slate-700">Google</span>
-                    </button>
-                    <button
-                        class="flex items-center justify-center py-2.5 border border-slate-100 rounded-xl hover:bg-slate-50 transition-all">
-                        <img src="https://www.svgrepo.com/show/448234/linkedin.svg" class="w-4 h-4 mr-2"
-                            alt="LinkedIn" />
-                        <span class="text-[10px] font-bold text-slate-700">LinkedIn</span>
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 </div>

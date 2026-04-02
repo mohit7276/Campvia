@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, Subject } from 'rxjs';
 import { tap, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 
@@ -13,6 +13,8 @@ export class ApiService {
   private baseUrl = environment.apiBaseUrl;
   private readonly TTL_MS = 45_000; // 45 seconds
   private cache = new Map<string, CacheEntry<any>>();
+  private courseCatalogChangedSubject = new Subject<void>();
+  courseCatalogChanged$ = this.courseCatalogChangedSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
@@ -54,8 +56,12 @@ export class ApiService {
     return this.http.post(`${this.baseUrl}/auth/login`, { email, password, role }, { headers: this.getHeaders() });
   }
 
-  register(name: string, email: string, password: string, role: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/auth/register`, { name, email, password, role }, { headers: this.getHeaders() });
+  register(name: string, email: string, password: string, role: string, courseId?: string, courseTitle?: string): Observable<any> {
+    return this.http.post(
+      `${this.baseUrl}/auth/register`,
+      { name, email, password, role, courseId, courseTitle },
+      { headers: this.getHeaders() }
+    );
   }
 
   getMe(): Observable<any> {
@@ -304,17 +310,23 @@ export class ApiService {
 
   createAdminCourse(course: any): Observable<any> {
     this.bust(`${this.baseUrl}/admin/courses`);
-    return this.http.post(`${this.baseUrl}/admin/courses`, course, { headers: this.getHeaders() });
+    return this.http.post(`${this.baseUrl}/admin/courses`, course, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyCourseCatalogChanged())
+    );
   }
 
   updateAdminCourse(id: string, course: any): Observable<any> {
     this.bust(`${this.baseUrl}/admin/courses`);
-    return this.http.put(`${this.baseUrl}/admin/courses/${id}`, course, { headers: this.getHeaders() });
+    return this.http.put(`${this.baseUrl}/admin/courses/${id}`, course, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyCourseCatalogChanged())
+    );
   }
 
   deleteAdminCourse(id: string): Observable<any> {
     this.bust(`${this.baseUrl}/admin/courses`);
-    return this.http.delete(`${this.baseUrl}/admin/courses/${id}`, { headers: this.getHeaders() });
+    return this.http.delete(`${this.baseUrl}/admin/courses/${id}`, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyCourseCatalogChanged())
+    );
   }
 
   addSubjectToCourse(courseId: string, subject: string): Observable<any> {
@@ -591,17 +603,31 @@ export class ApiService {
     return this.http.get(`${this.baseUrl}/landing/courses`);
   }
 
+  getPublicCourses(): Observable<any> {
+    return this.getLandingCourses();
+  }
+
+  private notifyCourseCatalogChanged() {
+    this.courseCatalogChangedSubject.next();
+  }
+
   // Admin updates landing page fields (title, category, image, description, rating) on a course
   updateLandingCourse(id: string, data: any): Observable<any> {
-    return this.http.put(`${this.baseUrl}/admin/courses/${id}`, data, { headers: this.getHeaders() });
+    return this.http.put(`${this.baseUrl}/admin/courses/${id}`, data, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyCourseCatalogChanged())
+    );
   }
 
   createLandingCourse(data: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/admin/courses`, data, { headers: this.getHeaders() });
+    return this.http.post(`${this.baseUrl}/admin/courses`, data, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyCourseCatalogChanged())
+    );
   }
 
   deleteLandingCourse(id: string): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/admin/courses/${id}`, { headers: this.getHeaders() });
+    return this.http.delete(`${this.baseUrl}/admin/courses/${id}`, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyCourseCatalogChanged())
+    );
   }
 
   // ===== CONTACT FORM =====

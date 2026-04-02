@@ -50,6 +50,11 @@ export class LandingComponent implements OnInit {
 
     ngOnInit() {
         this.checkScroll();
+        this.route.url.subscribe(segments => {
+            if (segments.length === 1 && segments[0].path === 'register') {
+                this.openAuth('register');
+            }
+        });
         this.route.queryParams.subscribe(params => {
             if (params['scan'] !== undefined || params['qr'] !== undefined) {
                 const scanId = params['scan'] ? String(params['scan']) : '';
