@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "dist/angular-app",
   "rewrites": [
     {
       "source": "/api/:path*",
