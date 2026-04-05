@@ -8,13 +8,13 @@ const mongoose = require('mongoose');
 
 const scheduleSchema = new mongoose.Schema({
   courseId:   { type: String, required: true },                // Links to Course.courseId
-  dayOfWeek: { type: Number, required: true, min: 1, max: 5 },
+  dayOfWeek: { type: Number, required: true, min: 0, max: 6 },
   time:      { type: String, required: true },                 // Start time (e.g. "09:00")
   endTime:   { type: String, default: '' },                    // End time (e.g. "10:00")
   subject:   { type: String, required: true },
   room:      { type: String, default: '' },
   duration:  { type: String, default: '' },
-  type:      { type: String, enum: ['lecture', 'lab', 'seminar'], default: 'lecture' },
+  type:      { type: String, enum: ['lecture', 'lab', 'seminar', 'workshop'], default: 'lecture' },
   faculty:   { type: String, default: '' }
 }, { timestamps: true });
 

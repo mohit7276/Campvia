@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, OnChanges, AfterViewInit, inject, ChangeDetectorRef, ElementRef, QueryList, ViewChildren } from '@angular/core';
+import { Component, Input, OnInit, OnChanges, OnDestroy, AfterViewInit, inject, ChangeDetectorRef, ElementRef, QueryList, ViewChildren } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, Clock, MapPin, User, ChevronLeft, ChevronRight, Calendar, RotateCcw, X, GraduationCap, Users, Bookmark, CheckCircle, XCircle, PieChart, BookOpen, AlertCircle, Camera, Navigation, ShieldCheck, History, TrendingUp, Crosshair, ArrowRight } from 'lucide-angular';
@@ -6,6 +6,7 @@ import { ScheduleItem, UserTodo, AttendanceRecord } from '../../types';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 import { ApiService } from '../../services/api.service';
 import { DataService } from '../../services/data.service';
+import { Subscription } from 'rxjs';
 
 // Permanent Campus Location
 const CAMPUS_LOCATION = { lat: 23.0258, lng: 72.5873 };
@@ -66,7 +67,7 @@ interface CombinedScheduleItem {
         ])
     ]
 })
-export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit {
+export class TimetablePageComponent implements OnInit, OnChanges, OnDestroy, AfterViewInit {
     @Input() userTodos: UserTodo[] = [];
     @Input() initialScanId: string | null = null;
 
@@ -123,6 +124,9 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
 
     // Today's scheduled lectures (from timetable DB)
     todayScheduleItems: CombinedScheduleItem[] = [];
+    private refreshTimerId: ReturnType<typeof setInterval> | null = null;
+    private timetableSubscription?: Subscription;
+    private readonly handleWindowFocus = () => this.refreshFromServer();
 
     // Scanner State
     isScannerOpen = false;
@@ -137,6 +141,9 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
         this.generateCalendarDays();
         this.loadAttendance();
         this.loadTodaySchedule();
+        this.timetableSubscription = this.api.timetableChanged$.subscribe(() => this.refreshFromServer());
+        this.refreshTimerId = window.setInterval(() => this.refreshFromServer(), 30000);
+        window.addEventListener('focus', this.handleWindowFocus);
 
     }
 
@@ -147,6 +154,19 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
     ngAfterViewInit() {
         this.dateItems.changes.subscribe(() => this.centerSelectedDateCard(false));
         this.centerSelectedDateCard(false);
+    }
+
+    ngOnDestroy() {
+        this.timetableSubscription?.unsubscribe();
+        window.removeEventListener('focus', this.handleWindowFocus);
+        if (this.refreshTimerId !== null) {
+            clearInterval(this.refreshTimerId);
+        }
+    }
+
+    private refreshFromServer() {
+        this.timetableCache = {};
+        this.loadAttendance();
     }
 
     updateDateWindow(centerOnMobile = false) {
@@ -366,6 +386,12 @@ export class TimetablePageComponent implements OnInit, OnChanges, AfterViewInit 
 
         this.api.previewAttendanceScan().subscribe({
             next: (preview) => {
+                if (preview && preview.found === false) {
+                    this.scanStatus = 'error';
+                    this.errorMessage = preview.message || 'Unable to find an active published lecture right now.';
+                    this.cdr.detectChanges();
+                    return;
+                }
                 this.pendingScanLecture = {
                     lectureId: preview?.lectureId || '',
                     subject: preview?.subject || 'Lecture',

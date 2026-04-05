@@ -104,7 +104,7 @@
                 <div class="relative h-32 sm:h-48 md:h-72 overflow-hidden bg-slate-100">
                     <img [src]="course.image" [alt]="course.title"
                         class="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
-                        loading="lazy" referrerpolicy="no-referrer"
+                        loading="eager" referrerpolicy="no-referrer"
                         (error)="onImageError($event)" />
                     <div class="absolute top-2 right-2 md:top-6 md:right-6">
                         <div

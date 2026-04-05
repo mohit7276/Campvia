@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnDestroy, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,6 +11,7 @@ import { DataService } from '../../services/data.service';
 import { DashboardHomeComponent } from '../dashboard-home/dashboard-home.component';
 import { UserTodo } from '../../types';
 import { ApiService } from '../../services/api.service';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-admin-dashboard',
@@ -27,7 +28,7 @@ import { ApiService } from '../../services/api.service';
     templateUrl: './admin-dashboard.component.html',
     styleUrls: ['./admin-dashboard.component.css']
 })
-export class AdminDashboardComponent implements OnInit {
+export class AdminDashboardComponent implements OnInit, OnDestroy {
     private api = inject(ApiService);
     private cdr = inject(ChangeDetectorRef);
 
@@ -74,6 +75,8 @@ export class AdminDashboardComponent implements OnInit {
     saveError = '';
     saveSuccess = '';
     saving = false;
+    private timetableSubscription?: Subscription;
+    private readonly handleWindowFocus = () => this.refreshOverviewData();
 
     // Toast notification
     toast = { visible: false, message: '', success: true };
@@ -128,21 +131,35 @@ export class AdminDashboardComponent implements OnInit {
             this.router.navigate(['/']);
             return;
         }
+        this.refreshOverviewData();
+        this.timetableSubscription = this.api.timetableChanged$.subscribe(() => this.refreshOverviewData());
+        window.addEventListener('focus', this.handleWindowFocus);
+        // Silently pre-fetch fees in the background so the fees section opens instantly (admin only)
+        if (this.authService.currentUser()?.role === 'admin') {
+            this.api.getAdminFees().subscribe({
+                next: (data: any[]) => {
+                    this.adminFees = data.map(fee => {
+                        const sid = fee.studentId?._id?.toString() || fee.studentId?.toString() || '';
+                        return { ...fee, studentName: this.studentNameMap.get(sid) || 'Unknown' };
+                    });
+                    this._feesSummaryDirty = true;
+                },
+                error: () => {}
+            });
+        }
+    }
+
+    ngOnDestroy() {
+        this.timetableSubscription?.unsubscribe();
+        window.removeEventListener('focus', this.handleWindowFocus);
+    }
+
+    private refreshOverviewData() {
         this.dataService.loadCourses();
         this.loadStudents();
         this.loadFaculty();
         this.loadTodos();
         this.loadStats();
-        // Silently pre-fetch fees in the background so the fees section opens instantly
-        this.api.getAdminFees().subscribe({
-            next: (data: any[]) => {
-                this.adminFees = data.map(fee => {
-                    const sid = fee.studentId?._id?.toString() || fee.studentId?.toString() || '';
-                    return { ...fee, studentName: this.studentNameMap.get(sid) || 'Unknown' };
-                });
-                this._feesSummaryDirty = true;
-            }
-        });
     }
 
     loadTodos() {

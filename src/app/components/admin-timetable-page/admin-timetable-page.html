@@ -388,6 +388,13 @@
             </div>
             <div class="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-5">
                 <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Course</label>
+                    <select [(ngModel)]="formCourseId" (ngModelChange)="formSubject = availableSubjects.length ? availableSubjects[0] : ''"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 outline-none transition-all font-semibold">
+                        <option *ngFor="let c of coursesList" [value]="c.id">{{ c.name }}</option>
+                    </select>
+                </div>
+                <div>
                     <label
                         class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Subject</label>
                     <select [(ngModel)]="formSubject"
@@ -486,6 +493,13 @@
                 </button>
             </div>
             <div class="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+                <div>
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Course</label>
+                    <select [(ngModel)]="lectureFormCourseId" (ngModelChange)="lectureFormSubject = lectureAvailableSubjects.length ? lectureAvailableSubjects[0] : ''"
+                        class="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 block p-3 outline-none transition-all font-semibold">
+                        <option *ngFor="let c of coursesList" [value]="c.id">{{ c.name }}</option>
+                    </select>
+                </div>
                 <div>
                     <label
                         class="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Subject</label>

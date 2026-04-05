@@ -244,14 +244,14 @@ router.post('/attendance/scan-preview', async (req, res) => {
       studentCourseId,
     });
 
-    if (!lecture) return res.status(404).json({ message: 'Lecture not found or session has ended.' });
+    if (!lecture) return res.status(200).json({ found: false, message: 'Lecture not found or session has ended.' });
 
     if (studentCourseId && lecture.courseId && lecture.courseId !== studentCourseId) {
-      return res.status(403).json({ message: 'Access denied: lecture does not belong to your course' });
+      return res.status(200).json({ found: false, message: 'Access denied: lecture does not belong to your course' });
     }
 
     if (!lecture.qrSession || !lecture.qrSession.active) {
-      return res.status(400).json({ message: 'No active attendance session found' });
+      return res.status(200).json({ found: false, message: 'No active attendance session found' });
     }
 
     res.json({

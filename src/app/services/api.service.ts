@@ -14,9 +14,25 @@ export class ApiService {
   private readonly TTL_MS = 45_000; // 45 seconds
   private cache = new Map<string, CacheEntry<any>>();
   private courseCatalogChangedSubject = new Subject<void>();
+  private timetableChangedSubject = new Subject<void>();
   courseCatalogChanged$ = this.courseCatalogChangedSubject.asObservable();
+  timetableChanged$ = this.timetableChangedSubject.asObservable();
+  private readonly appDataRefreshStorageKey = 'campvia_app_data_refresh';
+  private broadcastChannel: BroadcastChannel | null = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    if (typeof window !== 'undefined') {
+      if ('BroadcastChannel' in window) {
+        this.broadcastChannel = new BroadcastChannel('campvia_app_data');
+        this.broadcastChannel.onmessage = (event) => this.handleBroadcastMessage(event?.data);
+      }
+
+      window.addEventListener('storage', (event) => {
+        if (event.key !== this.appDataRefreshStorageKey || !event.newValue) return;
+        this.handleBroadcastMessage(event.newValue);
+      });
+    }
+  }
 
   /** Return cached response if fresh, otherwise fetch and cache. */
   private get$<T>(url: string): Observable<T> {
@@ -34,6 +50,18 @@ export class ApiService {
     for (const key of this.cache.keys()) {
       if (key.startsWith(prefix)) this.cache.delete(key);
     }
+  }
+
+  private bustTimetableDependentCache() {
+    this.bust(`${this.baseUrl}/student/timetable`);
+    this.bust(`${this.baseUrl}/admin/timetable`);
+    this.bust(`${this.baseUrl}/admin/lectures`);
+    this.bust(`${this.baseUrl}/student/dashboard/summary`);
+    this.bust(`${this.baseUrl}/faculty/dashboard/summary`);
+    this.bust(`${this.baseUrl}/student/attendance`);
+    this.bust(`${this.baseUrl}/student/attendance/stats`);
+    this.bust(`${this.baseUrl}/student/tests/upcoming`);
+    this.bust(`${this.baseUrl}/student/tests/past`);
   }
 
   private getHeaders(): HttpHeaders {
@@ -400,30 +428,42 @@ export class ApiService {
 
   createAdminLecture(lecture: any): Observable<any> {
     this.bust(`${this.baseUrl}/admin/lectures`);
-    return this.http.post(`${this.baseUrl}/admin/lectures`, lecture, { headers: this.getHeaders() });
+    return this.http.post(`${this.baseUrl}/admin/lectures`, lecture, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyTimetableChanged())
+    );
   }
 
   updateAdminLecture(id: string, lecture: any): Observable<any> {
     this.bust(`${this.baseUrl}/admin/lectures`);
-    return this.http.put(`${this.baseUrl}/admin/lectures/${id}`, lecture, { headers: this.getHeaders() });
+    return this.http.put(`${this.baseUrl}/admin/lectures/${id}`, lecture, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyTimetableChanged())
+    );
   }
 
   deleteAdminLecture(id: string): Observable<any> {
     this.bust(`${this.baseUrl}/admin/lectures`);
-    return this.http.delete(`${this.baseUrl}/admin/lectures/${id}`, { headers: this.getHeaders() });
+    return this.http.delete(`${this.baseUrl}/admin/lectures/${id}`, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyTimetableChanged())
+    );
   }
 
   updateLectureAttendance(id: string, attendance: any[]): Observable<any> {
     this.bust(`${this.baseUrl}/admin/lectures`);
-    return this.http.put(`${this.baseUrl}/admin/lectures/${id}/attendance`, { attendance }, { headers: this.getHeaders() });
+    return this.http.put(`${this.baseUrl}/admin/lectures/${id}/attendance`, { attendance }, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyTimetableChanged())
+    );
   }
 
   publishAttendance(lectureId: string, location: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/admin/lectures/${lectureId}/attendance/publish`, { location }, { headers: this.getHeaders() });
+    return this.http.post(`${this.baseUrl}/admin/lectures/${lectureId}/attendance/publish`, { location }, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyTimetableChanged())
+    );
   }
 
   stopPublishedAttendance(lectureId: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/admin/lectures/${lectureId}/attendance/stop`, {}, { headers: this.getHeaders() });
+    return this.http.post(`${this.baseUrl}/admin/lectures/${lectureId}/attendance/stop`, {}, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyTimetableChanged())
+    );
   }
 
   startQrSession(lectureId: string, location: any): Observable<any> {
@@ -527,17 +567,23 @@ export class ApiService {
 
   createAdminSchedule(schedule: any): Observable<any> {
     this.bust(`${this.baseUrl}/admin/timetable`);
-    return this.http.post(`${this.baseUrl}/admin/timetable`, schedule, { headers: this.getHeaders() });
+    return this.http.post(`${this.baseUrl}/admin/timetable`, schedule, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyTimetableChanged())
+    );
   }
 
   updateAdminSchedule(id: string, schedule: any): Observable<any> {
     this.bust(`${this.baseUrl}/admin/timetable`);
-    return this.http.put(`${this.baseUrl}/admin/timetable/${id}`, schedule, { headers: this.getHeaders() });
+    return this.http.put(`${this.baseUrl}/admin/timetable/${id}`, schedule, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyTimetableChanged())
+    );
   }
 
   deleteAdminSchedule(id: string): Observable<any> {
     this.bust(`${this.baseUrl}/admin/timetable`);
-    return this.http.delete(`${this.baseUrl}/admin/timetable/${id}`, { headers: this.getHeaders() });
+    return this.http.delete(`${this.baseUrl}/admin/timetable/${id}`, { headers: this.getHeaders() }).pipe(
+      tap(() => this.notifyTimetableChanged())
+    );
   }
 
   // ===== ADMIN TESTS =====
@@ -608,7 +654,42 @@ export class ApiService {
   }
 
   private notifyCourseCatalogChanged() {
+    this.broadcastAppDataChange('course-catalog');
     this.courseCatalogChangedSubject.next();
+  }
+
+  private notifyTimetableChanged() {
+    this.bustTimetableDependentCache();
+    this.broadcastAppDataChange('timetable');
+    this.timetableChangedSubject.next();
+  }
+
+  private broadcastAppDataChange(type: 'course-catalog' | 'timetable') {
+    if (typeof window === 'undefined') return;
+
+    const payload = JSON.stringify({ type, timestamp: Date.now() });
+    try {
+      window.localStorage.setItem(this.appDataRefreshStorageKey, payload);
+    } catch {
+      // Ignore storage quota/privacy failures and fall back to BroadcastChannel when available.
+    }
+
+    this.broadcastChannel?.postMessage(payload);
+  }
+
+  private handleBroadcastMessage(message: string) {
+    try {
+      const parsed = typeof message === 'string' ? JSON.parse(message) : message;
+      if (parsed?.type === 'timetable') {
+        this.bustTimetableDependentCache();
+        this.timetableChangedSubject.next();
+      }
+      if (parsed?.type === 'course-catalog') {
+        this.courseCatalogChangedSubject.next();
+      }
+    } catch {
+      // Ignore malformed broadcast payloads.
+    }
   }
 
   // Admin updates landing page fields (title, category, image, description, rating) on a course

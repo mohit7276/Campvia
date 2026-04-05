@@ -1,10 +1,11 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule, Clock, MapPin, User, ChevronLeft, ChevronRight, Calendar, RotateCcw, X, GraduationCap, Users, Bookmark, Edit2, Trash2, Plus, XCircle, CheckCircle, BookOpen, Search, Send } from 'lucide-angular';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 import { DataService, Course } from '../../services/data.service';
 import { ApiService } from '../../services/api.service';
+import { Subscription } from 'rxjs';
 
 export interface AdminScheduleItem {
   id: string;
@@ -69,7 +70,7 @@ export interface Lecture {
   ],
   providers: [DatePipe]
 })
-export class AdminTimetablePage implements OnInit {
+export class AdminTimetablePage implements OnInit, OnDestroy {
   private api = inject(ApiService);
   private cdr = inject(ChangeDetectorRef);
   // Icons
@@ -156,6 +157,9 @@ export class AdminTimetablePage implements OnInit {
   qrStatus: 'idle' | 'generating' | 'ready' | 'error' = 'idle';
   qrErrorMessage = '';
   qrScanUrl = '';
+  private refreshTimerId: ReturnType<typeof setInterval> | null = null;
+  private timetableSubscription?: Subscription;
+  private courseCatalogSubscription?: Subscription;
 
   get qrImageUrl(): string {
     if (!this.qrScanUrl) return '';
@@ -170,12 +174,33 @@ export class AdminTimetablePage implements OnInit {
     this.lectureFormDate = this.todayStr;
     this.loadSchedules();
     this.loadLectures();
+    this.dataService.loadCourses();
     this.api.getAdminFaculty().subscribe((data: any[]) => {
       this.allFaculty = data;
       this.cdr.detectChanges();
     });
     this.updateDateWindow();
     this.generateCalendarDays();
+    this.timetableSubscription = this.api.timetableChanged$.subscribe(() => this.refreshFromServer());
+    this.courseCatalogSubscription = this.api.courseCatalogChanged$.subscribe(() => {
+      this.dataService.loadCourses();
+      this.refreshFromServer();
+    });
+    this.refreshTimerId = window.setInterval(() => this.refreshFromServer(), 30000);
+  }
+
+  ngOnDestroy() {
+    this.timetableSubscription?.unsubscribe();
+    this.courseCatalogSubscription?.unsubscribe();
+    if (this.refreshTimerId !== null) {
+      clearInterval(this.refreshTimerId);
+    }
+  }
+
+  private refreshFromServer() {
+    this.api.bustTimetableAndLecturesCache();
+    this.loadSchedules();
+    this.loadLectures();
   }
 
   loadSchedules() {
@@ -313,9 +338,9 @@ export class AdminTimetablePage implements OnInit {
     if (this.saving) return;
     this.saving = true;
     const payload: any = {
-      courseId: this.formCourseId,
+      courseId: this.formCourseId || (this.coursesList.length > 0 ? this.coursesList[0].id : ''),
       dayOfWeek: parseInt(this.formDayOfWeek.toString(), 10),
-      subject: this.formSubject,
+      subject: this.formSubject || 'General',
       time: this.formTime,
       endTime: this.formEndTime,
       room: this.formRoom,
@@ -536,8 +561,8 @@ export class AdminTimetablePage implements OnInit {
     if (this.saving) return;
     this.saving = true;
     const payload: any = {
-      courseId: this.lectureFormCourseId,
-      subject: this.lectureFormSubject,
+      courseId: this.lectureFormCourseId || (this.coursesList.length > 0 ? this.coursesList[0].id : ''),
+      subject: this.lectureFormSubject || 'General',
       date: this.lectureFormDate,
       time: this.lectureFormTime,
       instructor: this.lectureFormInstructor

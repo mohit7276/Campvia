@@ -1,9 +1,10 @@
-import { Component, EventEmitter, inject, Input, OnInit, Output, ChangeDetectorRef } from '@angular/core';
+import { Component, EventEmitter, inject, Input, OnDestroy, OnInit, Output, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LucideAngularModule, Calendar, Clock, MapPin, User, ChevronRight, Bell, AlertCircle, CheckCircle2, BookOpen, GraduationCap, TrendingUp, Trophy } from 'lucide-angular';
 import { UserTodo, ScheduleItem } from '../../types';
 import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
+import { Subscription } from 'rxjs';
 
 @Component({
     selector: 'app-dashboard-home',
@@ -12,7 +13,7 @@ import { AuthService } from '../../services/auth.service';
     templateUrl: './dashboard-home.component.html',
     styleUrls: ['./dashboard-home.component.css']
 })
-export class DashboardHomeComponent implements OnInit {
+export class DashboardHomeComponent implements OnInit, OnDestroy {
     private api = inject(ApiService);
     private cdr = inject(ChangeDetectorRef);
     constructor(public authService: AuthService) { }
@@ -39,6 +40,9 @@ export class DashboardHomeComponent implements OnInit {
     noticesData: any[] = [];
     todayScheduledItems: any[] = [];
     todayAttendanceRecords: any[] = [];
+    private refreshTimerId: ReturnType<typeof setInterval> | null = null;
+    private timetableSubscription?: Subscription;
+    private readonly handleWindowFocus = () => this.refreshDashboard();
 
     // Fees card
     totalPending: number = 0;
@@ -61,13 +65,28 @@ export class DashboardHomeComponent implements OnInit {
     hasScores: boolean = false;
 
     ngOnInit() {
-        this.loadCardData();
-        this.calculateData();
-        this.loadTodayAttendanceCard();
+        this.refreshDashboard();
+        this.timetableSubscription = this.api.timetableChanged$.subscribe(() => this.refreshDashboard());
+        this.refreshTimerId = window.setInterval(() => this.refreshDashboard(), 30000);
+        window.addEventListener('focus', this.handleWindowFocus);
     }
 
     ngOnChanges() {
         this.calculateData();
+    }
+
+    ngOnDestroy() {
+        this.timetableSubscription?.unsubscribe();
+        window.removeEventListener('focus', this.handleWindowFocus);
+        if (this.refreshTimerId !== null) {
+            clearInterval(this.refreshTimerId);
+        }
+    }
+
+    private refreshDashboard() {
+        this.loadCardData();
+        this.calculateData();
+        this.loadTodayAttendanceCard();
     }
 
     loadCardData() {
@@ -204,37 +223,7 @@ export class DashboardHomeComponent implements OnInit {
             : this.api.getDashboardSummary();
 
         summary$.subscribe((data: any) => {
-            // Schedule — backend returns field as 'schedule'
-            const dailySchedule = (data.schedule || data.timetable || []).map((item: any, idx: number) => ({
-                time: item.time,
-                name: item.subject,
-                room: item.room,
-                duration: item.duration,
-                active: idx === 0
-            }));
-
-            const todaysTodos = this.userTodos
-                .filter(todo => todo.date === todayStr && !todo.completed)
-                .map(todo => ({
-                    time: todo.time,
-                    name: `Task: ${todo.title}`,
-                    room: todo.subject || 'Personal',
-                    duration: todo.description || 'Personal Task',
-                    active: false,
-                    isTodo: true
-                }));
-
-            const fullList = [...dailySchedule, ...todaysTodos];
-            this.combinedSchedule = fullList.sort((a: any, b: any) => {
-                const timeToMinutes = (t: string) => {
-                    let [time, modifier] = t.split(' ');
-                    let [hours, minutes] = time.split(':').map(Number);
-                    if (modifier === 'PM' && hours < 12) hours += 12;
-                    if (modifier === 'AM' && hours === 12) hours = 0;
-                    return hours * 60 + minutes;
-                };
-                return timeToMinutes(a.time) - timeToMinutes(b.time);
-            });
+            // Roadmap is built from timetable endpoints in loadTodayAttendanceCard().
 
             // Keep summary as fallback source for tests; student primary source is /tests/upcoming.
             if (this.upcomingTests.length === 0) {
@@ -261,6 +250,23 @@ export class DashboardHomeComponent implements OnInit {
     loadTodayAttendanceCard() {
         const todayStr = new Date().toISOString().split('T')[0];
         const todayDay = new Date().getDay();
+        const role = this.authService.currentUser()?.role;
+
+        if (role === 'faculty' || role === 'admin') {
+            this.api.getAdminTimetable(undefined, todayDay).subscribe({
+                next: (items: any[]) => {
+                    this.todayScheduledItems = items || [];
+                    this.buildRoadmapCardData();
+                    this.cdr.detectChanges();
+                },
+                error: () => {
+                    this.todayScheduledItems = [];
+                    this.buildRoadmapCardData();
+                    this.cdr.detectChanges();
+                }
+            });
+            return;
+        }
 
         // Load attendance records and today's timetable in parallel
         this.api.getAttendance().subscribe({
@@ -275,11 +281,71 @@ export class DashboardHomeComponent implements OnInit {
         this.api.getTimetable(todayDay, todayStr).subscribe({
             next: (items: any[]) => {
                 this.todayScheduledItems = items || [];
+                this.buildRoadmapCardData();
                 this.buildAttendanceCardData(todayStr, todayDay);
                 this.cdr.detectChanges();
             },
-            error: () => { this.buildAttendanceCardData(todayStr, todayDay); }
+            error: () => {
+                this.todayScheduledItems = [];
+                this.buildRoadmapCardData();
+                this.buildAttendanceCardData(todayStr, todayDay);
+            }
         });
+    }
+
+    private toMinutes(timeValue: string | undefined | null): number {
+        if (!timeValue) return Number.MAX_SAFE_INTEGER;
+        const value = timeValue.trim();
+        if (!value) return Number.MAX_SAFE_INTEGER;
+
+        const [timePart, modifierRaw] = value.split(' ');
+        const [hRaw, mRaw] = timePart.split(':').map(Number);
+        if (Number.isNaN(hRaw) || Number.isNaN(mRaw)) return Number.MAX_SAFE_INTEGER;
+
+        const modifier = (modifierRaw || '').toUpperCase();
+        let hours = hRaw;
+        if (modifier === 'PM' && hours < 12) hours += 12;
+        if (modifier === 'AM' && hours === 12) hours = 0;
+        return hours * 60 + mRaw;
+    }
+
+    private buildRoadmapCardData() {
+        const role = this.authService.currentUser()?.role;
+
+        const mapped = (this.todayScheduledItems || []).map((item: any) => ({
+            time: item.time || '--:--',
+            name: item.subject || 'Class',
+            room: item.room || item.faculty || 'Class',
+            duration: item.duration || (item.endTime ? `${item.time} - ${item.endTime}` : 'Session'),
+            active: false,
+            isTodo: false
+        }));
+
+        if (role === 'faculty' || role === 'admin') {
+            // Timetable API already returns current day items for faculty/admin.
+            this.combinedSchedule = mapped;
+            return;
+        }
+
+        const now = new Date();
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+        let activeIndex = -1;
+        for (let i = 0; i < mapped.length; i++) {
+            const start = this.toMinutes(mapped[i].time);
+            const nextStart = i < mapped.length - 1 ? this.toMinutes(mapped[i + 1].time) : Number.MAX_SAFE_INTEGER;
+
+            if (start <= nowMinutes && nowMinutes < nextStart) {
+                activeIndex = i;
+                break;
+            }
+            if (activeIndex === -1 && nowMinutes < start) {
+                activeIndex = i;
+                break;
+            }
+        }
+
+        this.combinedSchedule = mapped.map((item, idx) => ({ ...item, active: idx === activeIndex }));
     }
 
     buildAttendanceCardData(todayStr: string, _todayDay: number) {
