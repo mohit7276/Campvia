@@ -40,11 +40,11 @@ Do this before pushing to GitHub:
 	`RAZORPAY_KEY_ID`
 	`RAZORPAY_KEY_SECRET`
 	`CORS_ORIGIN`
-5. Deploy and copy the public backend URL. With the blueprint above, the URL will normally be `https://campvia-api.onrender.com`.
+5. Deploy and copy the public backend URL. With the blueprint above, the URL will normally be `https://campvia-2j8d.onrender.com`.
 6. Verify the health endpoint:
 
 ```bash
-https://campvia-api.onrender.com/api/health
+https://campvia-2j8d.onrender.com/api/health
 ```
 
 Expected response:
@@ -79,7 +79,7 @@ And in vercel.json:
 	"rewrites": [
 		{
 			"source": "/api/:path*",
-			"destination": "https://campvia-api.onrender.com/api/:path*"
+			"destination": "https://campvia-2j8d.onrender.com/api/:path*"
 		},
 		{
 			"source": "/(.*)",
