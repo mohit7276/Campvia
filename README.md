@@ -27,26 +27,24 @@ Do this before pushing to GitHub:
 
 ## 2. Deploy Backend on Render
 
-1. Push project to GitHub
-2. Open Render Dashboard and click New + > Web Service
-3. Connect repository
-4. Configure service:
-	Root Directory: backend
-	Build Command: npm install
-	Start Command: npm start
-5. Add environment variables from backend/.env.example:
-	PORT=5000
-	MONGODB_URI=<your atlas uri>
-	JWT_SECRET=<strong random value>
-	GEMINI_API_KEY=<your key>
-	RAZORPAY_KEY_ID=<your key>
-	RAZORPAY_KEY_SECRET=<your secret>
-	CORS_ORIGIN=https://your-frontend-domain.vercel.app
-6. Deploy and copy backend URL (example: https://your-api.onrender.com)
-7. Verify health endpoint:
+1. Push the repo to GitHub.
+2. Open Render and create a new Web Service from the repository.
+3. Use the included [render.yaml](render.yaml) blueprint or configure manually with:
+	Root Directory: `backend`
+	Build Command: `npm install`
+	Start Command: `npm start`
+4. Add the backend environment variables from [backend/.env.example](backend/.env.example):
+	`MONGODB_URI`
+	`JWT_SECRET`
+	`GEMINI_API_KEY`
+	`RAZORPAY_KEY_ID`
+	`RAZORPAY_KEY_SECRET`
+	`CORS_ORIGIN`
+5. Deploy and copy the public backend URL. With the blueprint above, the URL will normally be `https://campvia-api.onrender.com`.
+6. Verify the health endpoint:
 
 ```bash
-https://your-api.onrender.com/api/health
+https://campvia-api.onrender.com/api/health
 ```
 
 Expected response:
@@ -57,11 +55,11 @@ Expected response:
 
 ## 3. Configure Frontend Production API URL
 
-This project uses a Vercel rewrite to forward frontend /api calls to Render.
+This project uses a Vercel rewrite to forward frontend `/api` calls to Render.
 
-1. Keep src/environments/environment.prod.ts apiBaseUrl as /api
-2. Set geminiApiKey for production
-3. Ensure vercel.json rewrite destination points to your Render backend URL
+1. Keep [src/environments/environment.prod.ts](src/environments/environment.prod.ts) `apiBaseUrl` as `/api`.
+2. Keep [vercel.json](vercel.json) pointed at the Render backend URL.
+3. Deploy the frontend to Vercel from the repo root.
 
 Example:
 
@@ -69,7 +67,7 @@ Example:
 export const environment = {
   production: true,
   geminiApiKey: 'YOUR_GEMINI_API_KEY',
-	apiBaseUrl: '/api'
+  apiBaseUrl: '/api'
 };
 ```
 
@@ -77,10 +75,15 @@ And in vercel.json:
 
 ```json
 {
+	"outputDirectory": "dist/angular-app",
 	"rewrites": [
 		{
 			"source": "/api/:path*",
-			"destination": "https://your-api.onrender.com/api/:path*"
+			"destination": "https://campvia-api.onrender.com/api/:path*"
+		},
+		{
+			"source": "/(.*)",
+			"destination": "/index.html"
 		}
 	]
 }
@@ -88,15 +91,15 @@ And in vercel.json:
 
 ## 4. Deploy Frontend on Vercel
 
-1. Open Vercel Dashboard > Add New > Project
-2. Import your GitHub repository
-3. Configure:
+1. Open Vercel Dashboard > Add New > Project.
+2. Import the same GitHub repository.
+3. Use the root project settings:
 	Framework Preset: Angular
-	Build Command: npm run build:prod
-	Output Directory: dist/angular-app/browser
-4. Deploy
-5. Copy frontend URL (example: https://your-app.vercel.app)
-6. Update backend env CORS_ORIGIN to this URL (or wildcard like https://*.vercel.app) and redeploy backend
+	Build Command: `npm run build:prod`
+	Output Directory: `dist/angular-app`
+4. Deploy.
+5. Copy the frontend URL and add it to the backend `CORS_ORIGIN` value if you want to lock CORS down more tightly than `https://*.vercel.app`.
+6. Redeploy the backend after changing `CORS_ORIGIN`.
 
 ## 5. Verify End-to-End Production
 
@@ -107,6 +110,10 @@ Run this checklist:
 3. Upload a notice/document to confirm uploads route works
 4. Test payment order creation endpoint
 5. Check Atlas collections update in real time
+
+## 5. Important Deployment Note
+
+Notice file uploads currently go to the backend filesystem under `backend/uploads`. That works for development and basic deployments, but Render’s filesystem is not a long-term storage layer. If you need uploaded files to survive redeploys and restarts, move them to object storage like S3, Cloudinary, or a Render persistent disk.
 
 ## 6. Performance Tips (Low Lag / Fast Loading)
 
