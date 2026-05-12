@@ -49,3 +49,6 @@ backend/.env
 
 # Local DB dump folder
 mongo-dump/
+
+# Ignore local frontend environment overrides that may contain secrets
+src/environments/environment.local.ts

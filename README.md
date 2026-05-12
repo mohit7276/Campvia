@@ -66,7 +66,6 @@ Example:
 ```ts
 export const environment = {
   production: true,
-  geminiApiKey: 'YOUR_GEMINI_API_KEY',
   apiBaseUrl: '/api'
 };
 ```
@@ -111,11 +110,30 @@ Run this checklist:
 4. Test payment order creation endpoint
 5. Check Atlas collections update in real time
 
-## 5. Important Deployment Note
+## 6. Chatbot (Gemini) Secure Setup
+
+Keep Gemini keys server-side only.
+
+1. Set `GEMINI_API_KEY` in `backend/.env` for local dev (never commit this file).
+2. Set the same `GEMINI_API_KEY` in Render/Vercel/GitHub Secrets for production.
+3. Do not place Gemini keys in Angular `src/environments/*` files.
+4. Restart backend after changing env vars.
+
+Quick local check:
+
+```bash
+curl -X POST http://localhost:5000/api/chat/message \
+	-H "Content-Type: application/json" \
+	-d '{"message":"hello","history":[]}'
+```
+
+If response always looks like fallback text, the key is missing/invalid/restricted.
+
+## 7. Important Deployment Note
 
 Notice file uploads currently go to the backend filesystem under `backend/uploads`. That works for development and basic deployments, but Render’s filesystem is not a long-term storage layer. If you need uploaded files to survive redeploys and restarts, move them to object storage like S3, Cloudinary, or a Render persistent disk.
 
-## 6. Performance Tips (Low Lag / Fast Loading)
+## 8. Performance Tips (Low Lag / Fast Loading)
 
 No system can guarantee zero lag everywhere, but this setup minimizes delay:
 
@@ -127,7 +145,7 @@ No system can guarantee zero lag everywhere, but this setup minimizes delay:
 6. Monitor Render logs for slow endpoints
 7. Monitor Atlas slow queries and add indexes where needed
 
-## 7. Local Development Commands
+## 9. Local Development Commands
 
 From project root:
 
@@ -139,7 +157,7 @@ npm run dev:all
 
 If ports are busy, dev:all already clears 4200 and 5000 before starting.
 
-## 8. Production Files Added/Updated
+## 10. Production Files Added/Updated
 
 1. angular.json (production file replacement)
 2. src/environments/environment.ts (apiBaseUrl)

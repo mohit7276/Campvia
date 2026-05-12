@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  geminiApiKey: '',
+  // Do NOT store secrets in frontend files. Use backend environment variables.
   apiBaseUrl: '/api'
 };

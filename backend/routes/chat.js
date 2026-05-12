@@ -76,8 +76,16 @@ async function askGemini(message, history) {
     generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
   };
 
-  // Try models in priority order
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-flash-latest'];
+  // Try models in priority order. Keep broad fallback coverage because
+  // model availability can differ by project, region, and API key tier.
+  const models = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash',
+    'gemini-1.5-flash-8b',
+    'gemini-flash-latest'
+  ];
   let lastErr;
   for (const model of models) {
     try {

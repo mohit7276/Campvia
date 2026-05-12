@@ -1,0 +1,10 @@
+// Local environment override example.
+// Copy this to `src/environments/environment.local.ts` (DO NOT commit) and
+// add that filename to .gitignore so your real keys are not pushed to git.
+export const environment = {
+  production: false,
+  // The frontend shouldn't hold the Gemini/Google API key. Keep the key
+  // in `backend/.env` as `GEMINI_API_KEY` and let the backend proxy requests
+  // to Google. This file is an example for other local overrides.
+  apiBaseUrl: '/api'
+};
