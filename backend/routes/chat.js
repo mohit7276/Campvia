@@ -82,8 +82,7 @@ async function askGemini(message, history) {
   
   // Try models in priority order.
   const models = [
-    'gemini-1.5-flash',
-    'gemini-1.0-pro'
+    'gemini-1.5-flash'
   ];
   
   let lastErr;
