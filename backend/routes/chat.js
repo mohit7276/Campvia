@@ -83,7 +83,7 @@ async function askGemini(message, history) {
   // Try models in priority order.
   const models = [
     'gemini-1.5-flash',
-    'gemini-1.5-flash-8b'
+    'gemini-1.0-pro'
   ];
   
   let lastErr;
@@ -109,6 +109,7 @@ async function askGemini(message, history) {
       const text = result.response.text();
       if (text) return text;
     } catch (e) {
+      console.error(`Error with model ${modelName}:`, e.message);
       lastErr = e;
     }
   }
