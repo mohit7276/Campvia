@@ -72,57 +72,47 @@ Campvia is a modern digital higher education platform serving 15,000+ students g
 - If unsure about something specific, guide the user to contact support via the Contact page.`;
 
 // ── Gemini helper ──────────────────────────────────────────────────────────────
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
 async function askGemini(message, history) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('No API key');
 
-  const contents = [
-    ...history.map(h => ({
-      role: h.role,
-      parts: [{ text: (h.parts && h.parts[0]) ? h.parts[0].text : (h.text || '') }]
-    })),
-    { role: 'user', parts: [{ text: message }] }
-  ];
-
-  const body = {
-    system_instruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-    contents,
-    generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
-  };
-
-  // Try models in priority order. Keep broad fallback coverage because
-  // model availability can differ by project, region, and API key tier.
+  const genAI = new GoogleGenerativeAI(apiKey);
+  
+  // Try models in priority order.
   const models = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-8b',
-    'gemini-flash-latest'
+    'gemini-1.5-flash-8b'
   ];
+  
   let lastErr;
-  for (const model of models) {
+  
+  for (const modelName of models) {
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 20000);
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: controller.signal
+      const model = genAI.getGenerativeModel({
+        model: modelName,
+        systemInstruction: SYSTEM_INSTRUCTION,
+        generationConfig: { maxOutputTokens: 1024, temperature: 0.7 }
       });
-      clearTimeout(timer);
-      const data = await resp.json();
-      if (!resp.ok) {
-        // capture API error message and status for clearer logs
-        lastErr = new Error(`${resp.status} ${data.error?.message || resp.statusText}`);
-        continue;
-      }
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      const formattedHistory = history.map(h => ({
+        role: h.role === 'user' ? 'user' : 'model',
+        parts: [{ text: (h.parts && h.parts[0]) ? h.parts[0].text : (h.text || '') }]
+      }));
+      
+      const chatSession = model.startChat({
+        history: formattedHistory,
+      });
+
+      const result = await chatSession.sendMessage(message);
+      const text = result.response.text();
       if (text) return text;
-    } catch (e) { lastErr = e; }
+    } catch (e) {
+      lastErr = e;
+    }
   }
+  
   throw lastErr || new Error('All Gemini models failed');
 }
 
